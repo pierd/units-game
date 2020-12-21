@@ -1,0 +1,54 @@
+<html>
+
+<head>
+    <title>UNITS</title>
+
+    <script lang="javascript">
+        "use strict"
+        import("./pkg/units_game.js")
+            .then((module) => {
+                module.default().then(function (obj) {
+                    (new module.Module("content")).start()
+                }).catch(function (e) {
+                    console.error("Failed to init module:", e)
+                })
+            }).catch(function (e) {
+                console.error("Failed to load:", e)
+            });
+    </script>
+
+    <style>
+        #content {
+            display: flex;
+            justify-content: center;
+        }
+        .card {
+            display: flex;
+            height: 300px;
+            width: 200px;
+            background-color: red;
+        }
+        .left {
+            height: 20%;
+            width: 20%;
+            background-color: green;
+            margin-left: 0;
+            margin-right: auto;
+            margin-top: 50%;
+        }
+        .right {
+            height: 20%;
+            width: 20%;
+            background-color: blue;
+            margin-left: auto;
+            margin-right: 0;
+            margin-top: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="content"></div>
+</body>
+
+</html>
