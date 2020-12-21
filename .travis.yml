@@ -20,7 +20,8 @@ script:
   - mv pkg out/
 
 deploy:
-  provider: pages:git
+  provider: pages
+  strategy: git
   token: $github_token
   edge: true
   cleanup: false
