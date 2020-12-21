@@ -15,9 +15,9 @@ before_script:
 script:
   - cargo test
   - wasm-pack build --release --target web --no-typescript
-  - mkdir -p out
+  - mkdir -p out/pkg
   - cp index.html out/
-  - mv pkg out/
+  - mv pkg/units_game* out/pkg/
 
 deploy:
   provider: pages
