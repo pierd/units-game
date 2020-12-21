@@ -26,4 +26,4 @@ deploy:
   cleanup: false
   local_dir: out
   on:
-    branch: master
+    branch: main
