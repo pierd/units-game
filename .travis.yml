@@ -1,4 +1,6 @@
 language: rust
+os: linux
+dist: xenial
 rust:
   - stable
 
@@ -11,15 +13,17 @@ before_script:
   - (test -x $HOME/.cargo/bin/wasm-pack || cargo install --vers "^0.9" wasm-pack)
 
 script:
+  - cargo test
   - wasm-pack build --release --target web --no-typescript
   - mkdir -p out
   - cp index.html out/
   - mv pkg out/
 
 deploy:
-  provider: pages
-  skip_cleanup: true
-  github_token: $github_token
+  provider: pages:git
+  token: $github_token
+  edge: true
+  cleanup: false
   local_dir: out
   on:
     branch: master
