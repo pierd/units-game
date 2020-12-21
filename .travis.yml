@@ -1,0 +1,25 @@
+language: rust
+rust:
+  - stable
+
+cache:
+  directories:
+    - $TRAVIS_BUILD_DIR/src/target
+    - $HOME/.cargo
+
+before_script:
+  - (test -x $HOME/.cargo/bin/wasm-pack || cargo install --vers "^0.9" wasm-pack)
+
+script:
+  - wasm-pack build --release --target web --no-typescript
+  - mkdir -p out
+  - cp index.html out/
+  - mv pkg out/
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $github_token
+  local_dir: out
+  on:
+    branch: master
