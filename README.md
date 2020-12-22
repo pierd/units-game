@@ -1,7 +1,8 @@
 # units-game
 
-## Running
+https://pierd.github.io/units-game/
 
+## Running
 Building:
 ```
 $ wasm-pack build --debug --target web --no-typescript
