@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use wasm_bindgen::prelude::{wasm_bindgen, Closure};
 use wasm_bindgen::JsCast;
-use web_sys::{window, Element, MouseEvent};
+use web_sys::{window, Element, MouseEvent, TouchEvent};
 
 #[wasm_bindgen]
 extern "C" {
@@ -19,6 +19,22 @@ macro_rules! log {
             log(&format!($($arg)*));
         }
     }}
+}
+
+trait PointerEvent {
+    fn get_x(&self) -> i32;
+}
+
+impl PointerEvent for MouseEvent {
+    fn get_x(&self) -> i32 {
+        self.client_x()
+    }
+}
+
+impl PointerEvent for TouchEvent {
+    fn get_x(&self) -> i32 {
+        self.touches().item(0).unwrap().client_x()
+    }
 }
 
 struct Game {
@@ -91,18 +107,19 @@ impl Game {
         }
     }
 
-    fn mouse_down(&mut self, event: MouseEvent) {
-        self.pan_start_x = Some(event.client_x());
+
+    fn pointer_start<T: PointerEvent>(&mut self, event: T) {
+        self.pan_start_x = Some(event.get_x());
     }
 
-    fn mouse_up(&mut self, _event: MouseEvent) {
+    fn pointer_end<T: PointerEvent>(&mut self, _event: T) {
         self.pan_start_x = None;
         self.set_card_translate(0);
     }
 
-    fn mouse_move(&mut self, event: MouseEvent) {
+    fn pointer_move<T: PointerEvent>(&mut self, event: T) {
         if let Some(pan_start_x) = self.pan_start_x {
-            self.set_card_translate(event.client_x() - pan_start_x);
+            self.set_card_translate(event.get_x() - pan_start_x);
         }
     }
 }
@@ -136,42 +153,73 @@ impl Module {
         let mouse_move = {
             let game = self.game.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                game.borrow_mut().mouse_move(event);
+                game.borrow_mut().pointer_move(event);
             }) as Box<dyn FnMut(_)>)
         };
         let mouse_up = {
             let game = self.game.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                game.borrow_mut().mouse_up(event);
+                game.borrow_mut().pointer_end(event);
             }) as Box<dyn FnMut(_)>)
         };
         let mouse_down = {
             let game = self.game.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                game.borrow_mut().mouse_down(event);
+                game.borrow_mut().pointer_start(event);
             }) as Box<dyn FnMut(_)>)
         };
 
-        let mouse_move_ref = mouse_move.as_ref().unchecked_ref();
-        let mouse_up_ref = mouse_up.as_ref().unchecked_ref();
-        let mouse_down_ref = mouse_down.as_ref().unchecked_ref();
+        let touch_move = {
+            let game = self.game.clone();
+            Closure::wrap(Box::new(move |event: TouchEvent| {
+                game.borrow_mut().pointer_move(event);
+            }) as Box<dyn FnMut(_)>)
+        };
+        let touch_end = {
+            let game = self.game.clone();
+            Closure::wrap(Box::new(move |event: TouchEvent| {
+                game.borrow_mut().pointer_end(event);
+            }) as Box<dyn FnMut(_)>)
+        };
+        let touch_start = {
+            let game = self.game.clone();
+            Closure::wrap(Box::new(move |event: TouchEvent| {
+                game.borrow_mut().pointer_start(event);
+            }) as Box<dyn FnMut(_)>)
+        };
 
         self.content
-            .add_event_listener_with_callback("mousedown", mouse_down_ref)
+            .add_event_listener_with_callback("mousedown", mouse_down.as_ref().unchecked_ref())
             .unwrap();
         self.content
-            .add_event_listener_with_callback("mouseup", mouse_up_ref)
+            .add_event_listener_with_callback("mouseup", mouse_up.as_ref().unchecked_ref())
             .unwrap();
         self.content
-            .add_event_listener_with_callback("mousemove", mouse_move_ref)
+            .add_event_listener_with_callback("mousemove", mouse_move.as_ref().unchecked_ref())
             .unwrap();
         self.content
-            .add_event_listener_with_callback("mouseleave", mouse_up_ref)
+            .add_event_listener_with_callback("mouseleave", mouse_up.as_ref().unchecked_ref())
+            .unwrap();
+
+        self.content
+            .add_event_listener_with_callback("touchstart", touch_start.as_ref().unchecked_ref())
+            .unwrap();
+        self.content
+            .add_event_listener_with_callback("touchend", touch_end.as_ref().unchecked_ref())
+            .unwrap();
+        self.content
+            .add_event_listener_with_callback("touchmove", touch_move.as_ref().unchecked_ref())
+            .unwrap();
+        self.content
+            .add_event_listener_with_callback("touchcancel", touch_end.as_ref().unchecked_ref())
             .unwrap();
 
         mouse_move.forget();
         mouse_up.forget();
         mouse_down.forget();
+        touch_move.forget();
+        touch_end.forget();
+        touch_start.forget();
 
         log!("Started.");
     }

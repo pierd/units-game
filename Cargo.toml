@@ -19,5 +19,8 @@ features = [
     "Document",
     "Element",
     "MouseEvent",
+    "Touch",
+    "TouchEvent",
+    "TouchList",
     "Window",
 ]
