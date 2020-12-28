@@ -1,4 +1,5 @@
-use super::log;
+use super::{Game, GameType, State, ViewController};
+use super::gestures::PointerEvent;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -7,43 +8,50 @@ use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{window, Element, MouseEvent, TouchEvent};
 
-trait PointerEvent {
-    fn get_x(&self) -> i32;
+pub(crate) struct CardsController {
+    controller: Rc<RefCell<CardsControllerImpl>>,
 }
 
-impl PointerEvent for MouseEvent {
-    fn get_x(&self) -> i32 {
-        self.client_x()
+impl CardsController {
+    pub(crate) fn new(game: Game, game_type: GameType) -> Self {
+        Self {
+            controller: CardsControllerImpl::new(game, game_type),
+        }
     }
 }
 
-impl PointerEvent for TouchEvent {
-    fn get_x(&self) -> i32 {
-        self.touches().item(0).unwrap().client_x()
+impl ViewController for CardsController {
+    fn is_for_state(&self, state: State) -> bool {
+        match state {
+            State::Playing(_) => true,
+            _ => false,
+        }
+    }
+
+    fn show(&mut self) -> Element {
+        CardsControllerImpl::show(self.controller.clone())
+    }
+
+    fn hide(&mut self) {
+        self.controller.borrow_mut().hide();
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum State {
-    None,
-    Menu,
-    Playing,
-}
+struct CardsControllerImpl {
+    game: Game,
+    view: Option<Element>,
 
-pub(crate) struct Game {
-    content: Element,
-    state: State,
     pan_start_x: Option<i32>,
     card: Option<Element>,
     left: Option<Element>,
     right: Option<Element>,
 }
 
-impl Game {
-    pub fn new(content: Element) -> Rc<RefCell<Self>> {
+impl CardsControllerImpl {
+    fn new(game: Game, _game_type: GameType) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self {
-            content,
-            state: State::None,
+            game,
+            view: None,
             pan_start_x: None,
             card: None,
             left: None,
@@ -51,85 +59,115 @@ impl Game {
         }))
     }
 
-    pub fn run(self_: Rc<RefCell<Self>>) {
-        {
-            let mut game = self_.borrow_mut();
-            assert!(game.state == State::None);
-            game.state = State::Menu;
-        }
-        Self::show_menu(self_);
-    }
+    fn show(self_: Rc<RefCell<Self>>) -> Element {
+        let mut controller = self_.borrow_mut();
+        assert_eq!(controller.view, None);
 
-    fn show_menu(self_: Rc<RefCell<Self>>) {
-        log!("would show menu");
-        Self::start(self_);
-    }
+        let document = window().unwrap().document().unwrap();
 
-    fn start(self_: Rc<RefCell<Self>>) {
-        let mut game = self_.borrow_mut();
-        game.add_card();
+        // create main container for cards
+        let view = document
+            .create_element("div")
+            .expect("create_element failed");
+        view.set_class_name("cards");
 
+        // create card view
+        let card = document
+            .create_element("div")
+            .expect("create_element failed");
+        card.set_class_name("card");
+
+        // create left side of the card
+        let left = document
+            .create_element("div")
+            .expect("create_element failed");
+        left.set_class_name("left");
+        left.set_inner_html("30 C");
+        card.append_with_node_1(&left)
+            .expect("append_with_node_1 failed");
+        controller.left = Some(left);
+
+        // create right side of the card
+        let right = document
+            .create_element("div")
+            .expect("create_element failed");
+        right.set_class_name("right");
+        right.set_inner_html("90 F");
+        card.append_with_node_1(&right)
+            .expect("append_with_node_1 failed");
+        controller.right = Some(right);
+
+        // store the main view and current card
+        view.append_with_node_1(&card)
+            .expect("append_with_node_1 failed");
+        controller.view = Some(view.clone());
+        controller.card = Some(card.clone());
+
+        // release the controller borrow
+        let _ = controller;
+
+        // attach gestures
         let mouse_move = {
-            let game = self_.clone();
+            let controller = self_.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                game.borrow_mut().pointer_move(event);
+                controller.borrow_mut().pointer_move(event);
             }) as Box<dyn FnMut(_)>)
         };
         let mouse_up = {
-            let game = self_.clone();
+            let controller = self_.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                game.borrow_mut().pointer_end(event);
+                controller.borrow_mut().pointer_end(event);
             }) as Box<dyn FnMut(_)>)
         };
         let mouse_down = {
-            let game = self_.clone();
+            let controller = self_.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                game.borrow_mut().pointer_start(event);
+                controller.borrow_mut().pointer_start(event);
             }) as Box<dyn FnMut(_)>)
         };
 
         let touch_move = {
-            let game = self_.clone();
+            let controller = self_.clone();
             Closure::wrap(Box::new(move |event: TouchEvent| {
-                game.borrow_mut().pointer_move(event);
+                controller.borrow_mut().pointer_move(event);
             }) as Box<dyn FnMut(_)>)
         };
         let touch_end = {
-            let game = self_.clone();
+            let controller = self_.clone();
             Closure::wrap(Box::new(move |event: TouchEvent| {
-                game.borrow_mut().pointer_end(event);
+                controller.borrow_mut().pointer_end(event);
             }) as Box<dyn FnMut(_)>)
         };
         let touch_start = {
-            let game = self_.clone();
+            let controller = self_.clone();
             Closure::wrap(Box::new(move |event: TouchEvent| {
-                game.borrow_mut().pointer_start(event);
+                controller.borrow_mut().pointer_start(event);
             }) as Box<dyn FnMut(_)>)
         };
 
-        game.content
+        view
             .add_event_listener_with_callback("mousedown", mouse_down.as_ref().unchecked_ref())
             .unwrap();
-        game.content
+        view
             .add_event_listener_with_callback("mouseup", mouse_up.as_ref().unchecked_ref())
             .unwrap();
-        game.content
+        view
             .add_event_listener_with_callback("mousemove", mouse_move.as_ref().unchecked_ref())
             .unwrap();
-        game.content
+        view
             .add_event_listener_with_callback("mouseleave", mouse_up.as_ref().unchecked_ref())
             .unwrap();
 
-        game.content
+        view
             .add_event_listener_with_callback("touchstart", touch_start.as_ref().unchecked_ref())
             .unwrap();
-        game.content
+        view
             .add_event_listener_with_callback("touchend", touch_end.as_ref().unchecked_ref())
             .unwrap();
-        game.content
+        view
             .add_event_listener_with_callback("touchmove", touch_move.as_ref().unchecked_ref())
             .unwrap();
-        game.content
+        view
             .add_event_listener_with_callback("touchcancel", touch_end.as_ref().unchecked_ref())
             .unwrap();
 
@@ -139,38 +177,9 @@ impl Game {
         touch_move.forget();
         touch_end.forget();
         touch_start.forget();
-    }
 
-    fn add_card(&mut self) {
-        let document = window().unwrap().document().unwrap();
-        let card = document
-            .create_element("div")
-            .expect("create_element failed");
-        card.set_id("test");
-        card.set_class_name("card");
-
-        let left = document
-            .create_element("div")
-            .expect("create_element failed");
-        left.set_class_name("left");
-        left.set_inner_html("30 C");
-        card.append_with_node_1(&left)
-            .expect("append_with_node_1 failed");
-        self.left = Some(left);
-
-        let right = document
-            .create_element("div")
-            .expect("create_element failed");
-        right.set_class_name("right");
-        right.set_inner_html("90 F");
-        card.append_with_node_1(&right)
-            .expect("append_with_node_1 failed");
-        self.right = Some(right);
-
-        self.content
-            .append_with_node_1(&card)
-            .expect("append_with_node_1 failed");
-        self.card = Some(card);
+        // return card as the main view
+        view
     }
 
     fn set_card_translate(&mut self, translate_x: i32) {
@@ -226,12 +235,15 @@ impl Game {
             self.set_card_translate(event.get_x() - pan_start_x);
         }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn hide(&mut self) {
+        if let Some(ref view) = self.view {
+            view.remove();
+        }
+        self.pan_start_x = None;
+        self.view = None;
+        self.card = None;
+        self.left = None;
+        self.right = None;
     }
 }

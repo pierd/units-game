@@ -1,32 +1,12 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use game::Game;
 use wasm_bindgen::prelude::wasm_bindgen;
-use web_sys::{window, Element, MouseEvent, TouchEvent};
+use web_sys::{window, Element};
 
-mod game;
 mod logging;
-
-trait PointerEvent {
-    fn get_x(&self) -> i32;
-}
-
-impl PointerEvent for MouseEvent {
-    fn get_x(&self) -> i32 {
-        self.client_x()
-    }
-}
-
-impl PointerEvent for TouchEvent {
-    fn get_x(&self) -> i32 {
-        self.touches().item(0).unwrap().client_x()
-    }
-}
+mod game;
 
 #[wasm_bindgen]
 pub struct Module {
-    game: Rc<RefCell<Game>>,
+    game: game::Game,
     content: Element,
 }
 
@@ -40,7 +20,7 @@ impl Module {
             .get_element_by_id(&content_id)
             .expect("get_element_by_id failed");
         Self {
-            game: Game::new(element.clone()),
+            game: game::Game::new(element.clone()),
             content: element,
         }
     }
@@ -48,7 +28,7 @@ impl Module {
     #[wasm_bindgen]
     pub fn start(&mut self) {
         log!("Starting in: {}", self.content.id());
-        game::Game::run(self.game.clone());
+        self.game.run();
         log!("Started.");
     }
 }
