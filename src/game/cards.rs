@@ -1,5 +1,5 @@
 use super::gestures::PointerEvent;
-use super::{Game, GameType, State, ViewController};
+use super::{Game, GameType, ViewController};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -21,13 +21,6 @@ impl CardsController {
 }
 
 impl ViewController for CardsController {
-    fn is_for_state(&self, state: State) -> bool {
-        match state {
-            State::Playing(_) => true,
-            _ => false,
-        }
-    }
-
     fn show(&mut self) -> Element {
         CardsControllerImpl::show(self.controller.clone())
     }

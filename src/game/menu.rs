@@ -16,13 +16,6 @@ impl MenuController {
 }
 
 impl ViewController for MenuController {
-    fn is_for_state(&self, state: State) -> bool {
-        match state {
-            State::Menu => true,
-            _ => false,
-        }
-    }
-
     fn show(&mut self) -> Element {
         assert_eq!(self.view, None);
 

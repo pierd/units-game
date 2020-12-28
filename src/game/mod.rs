@@ -46,7 +46,6 @@ pub(crate) enum State {
 }
 
 trait ViewController {
-    fn is_for_state(&self, state: State) -> bool;
     fn show(&mut self) -> Element;
     fn hide(&mut self);
 }
