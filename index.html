@@ -21,32 +21,60 @@
         body {
             overflow: hidden;
             user-select: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
         }
         #content {
+            height: 100vh;
+            width: 100vw;
             display: flex;
             justify-content: center;
         }
+        .cards {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            background-color: grey;
+        }
         .card {
             display: flex;
-            height: 80vh;
-            width: 50vh;
+            height: 60vh;
+            width: 38vh;
             background-color: red;
+            margin-top: 15vh;
         }
         .left {
             height: 16vh;
-            width: 10vh;
+            width: 16vh;
             background-color: green;
             margin-left: 0;
             margin-right: auto;
-            margin-top: 32vh;
+            margin-top: 22vh;
+            font-size: 10vh;
         }
         .right {
             height: 16vh;
-            width: 10vh;
+            width: 16vh;
             background-color: blue;
             margin-left: auto;
             margin-right: 0;
-            margin-top: 32vh;
+            margin-top: 22vh;
+            font-size: 10vh;
+        }
+        .menu {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            background-color: indigo;
+        }
+        .menu-button {
+            height: 16vh;
+            width: 16vh;
+            background-color: lawngreen;
+            margin-top: 6vh;
+            font-size: 8vh;
         }
     </style>
 </head>
