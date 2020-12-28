@@ -36,7 +36,7 @@ impl Game {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum GameType {
-    Temperatures
+    Temperatures,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -66,13 +66,17 @@ impl GameController {
 
     fn transition(self_: Rc<RefCell<Self>>, state: State) {
         log!("Transitioning to: {:?}", state);
-        self_.borrow_mut().show_view_controller(GameController::create_view_controller(self_.clone(), state));
+        self_
+            .borrow_mut()
+            .show_view_controller(GameController::create_view_controller(self_.clone(), state));
     }
 
     fn create_view_controller(self_: Rc<RefCell<Self>>, state: State) -> Box<dyn ViewController> {
         match state {
             State::Menu => Box::new(MenuController::new(Game::wrap(self_.clone()))),
-            State::Playing(game_type) => Box::new(CardsController::new(Game::wrap(self_.clone()), game_type)),
+            State::Playing(game_type) => {
+                Box::new(CardsController::new(Game::wrap(self_.clone()), game_type))
+            }
         }
     }
 
@@ -80,7 +84,8 @@ impl GameController {
         if let Some(ref mut sub_controller) = self.sub_controller {
             sub_controller.hide();
         }
-        self.content.append_with_node_1(&view_controller.show())
+        self.content
+            .append_with_node_1(&view_controller.show())
             .expect("append_with_node_1 failed");
         self.sub_controller = Some(view_controller);
     }

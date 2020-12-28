@@ -11,10 +11,7 @@ pub(crate) struct MenuController {
 
 impl MenuController {
     pub(crate) fn new(game: Game) -> Self {
-        Self {
-            game,
-            view: None,
-        }
+        Self { game, view: None }
     }
 }
 
@@ -56,8 +53,7 @@ impl ViewController for MenuController {
                 game.transition(State::Playing(GameType::Temperatures));
             }) as Box<dyn FnMut(_)>)
         };
-        view
-            .add_event_listener_with_callback("click", click.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("click", click.as_ref().unchecked_ref())
             .unwrap();
         click.forget();
 

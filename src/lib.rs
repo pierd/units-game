@@ -1,8 +1,8 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::{window, Element};
 
-mod logging;
 mod game;
+mod logging;
 
 #[wasm_bindgen]
 pub struct Module {

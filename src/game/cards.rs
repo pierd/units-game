@@ -1,5 +1,5 @@
-use super::{Game, GameType, State, ViewController};
 use super::gestures::PointerEvent;
+use super::{Game, GameType, State, ViewController};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -145,30 +145,22 @@ impl CardsControllerImpl {
             }) as Box<dyn FnMut(_)>)
         };
 
-        view
-            .add_event_listener_with_callback("mousedown", mouse_down.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("mousedown", mouse_down.as_ref().unchecked_ref())
             .unwrap();
-        view
-            .add_event_listener_with_callback("mouseup", mouse_up.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("mouseup", mouse_up.as_ref().unchecked_ref())
             .unwrap();
-        view
-            .add_event_listener_with_callback("mousemove", mouse_move.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("mousemove", mouse_move.as_ref().unchecked_ref())
             .unwrap();
-        view
-            .add_event_listener_with_callback("mouseleave", mouse_up.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("mouseleave", mouse_up.as_ref().unchecked_ref())
             .unwrap();
 
-        view
-            .add_event_listener_with_callback("touchstart", touch_start.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("touchstart", touch_start.as_ref().unchecked_ref())
             .unwrap();
-        view
-            .add_event_listener_with_callback("touchend", touch_end.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("touchend", touch_end.as_ref().unchecked_ref())
             .unwrap();
-        view
-            .add_event_listener_with_callback("touchmove", touch_move.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("touchmove", touch_move.as_ref().unchecked_ref())
             .unwrap();
-        view
-            .add_event_listener_with_callback("touchcancel", touch_end.as_ref().unchecked_ref())
+        view.add_event_listener_with_callback("touchcancel", touch_end.as_ref().unchecked_ref())
             .unwrap();
 
         mouse_move.forget();
