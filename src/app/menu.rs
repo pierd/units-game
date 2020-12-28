@@ -33,7 +33,7 @@ impl ViewController for MenuController {
             .create_element("div")
             .expect("create_element failed");
         temperature.set_class_name("menu-button");
-        temperature.set_inner_html("Temperatures");
+        temperature.set_inner_html("C/F");
 
         view.append_with_node_1(&temperature)
             .expect("append_with_node_1 failed");
