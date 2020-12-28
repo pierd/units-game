@@ -4,13 +4,13 @@ use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{window, Element, MouseEvent};
 
-pub(crate) struct MenuController {
+pub struct MenuController {
     game: Game,
     view: Option<Element>,
 }
 
 impl MenuController {
-    pub(crate) fn new(game: Game) -> Self {
+    pub fn new(game: Game) -> Self {
         Self { game, view: None }
     }
 }

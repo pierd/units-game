@@ -3,6 +3,7 @@ use web_sys::{window, Element};
 
 mod game;
 mod logging;
+mod logic;
 
 #[wasm_bindgen]
 pub struct Module {

@@ -8,12 +8,12 @@ use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{window, Element, MouseEvent, TouchEvent};
 
-pub(crate) struct CardsController {
+pub struct CardsController {
     controller: Rc<RefCell<CardsControllerImpl>>,
 }
 
 impl CardsController {
-    pub(crate) fn new(game: Game, game_type: GameType) -> Self {
+    pub fn new(game: Game, game_type: GameType) -> Self {
         Self {
             controller: CardsControllerImpl::new(game, game_type),
         }

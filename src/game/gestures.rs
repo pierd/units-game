@@ -1,6 +1,6 @@
 use web_sys::{MouseEvent, TouchEvent};
 
-pub(crate) trait PointerEvent {
+pub trait PointerEvent {
     fn get_x(&self) -> i32;
 }
 

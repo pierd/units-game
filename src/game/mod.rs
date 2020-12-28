@@ -1,4 +1,5 @@
 use super::log;
+use super::logic::GameType;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -12,7 +13,7 @@ mod gestures;
 mod menu;
 
 #[derive(Clone)]
-pub(crate) struct Game {
+pub struct Game {
     controller: Rc<RefCell<GameController>>,
 }
 
@@ -29,18 +30,13 @@ impl Game {
         self.transition(State::Menu);
     }
 
-    pub(crate) fn transition(&self, state: State) {
+    pub fn transition(&self, state: State) {
         GameController::transition(self.controller.clone(), state);
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum GameType {
-    Temperatures,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum State {
+pub enum State {
     Menu,
     Playing(GameType),
 }
