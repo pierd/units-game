@@ -89,14 +89,14 @@ impl GameType {
 }
 
 #[derive(Debug)]
-pub struct UnitsGame {
+pub struct Game {
     pub game_type: GameType,
     pub in_progress: bool,
     pub level: Level,
     pub challenge: Challenge,
 }
 
-impl UnitsGame {
+impl Game {
     pub fn new(game_type: GameType) -> Self {
         Self {
             game_type,
@@ -135,12 +135,12 @@ mod tests {
 
     #[test]
     fn new_game_is_in_progress() {
-        assert_eq!(UnitsGame::new(GameType::Temperatures).in_progress, true);
+        assert_eq!(Game::new(GameType::Temperatures).in_progress, true);
     }
 
     #[test]
     fn correct_pick_increases_level() {
-        let mut game = UnitsGame {
+        let mut game = Game {
             game_type: GameType::Temperatures,
             in_progress: true,
             level: 3,
@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn wrong_pick_stops_game() {
-        let mut game = UnitsGame {
+        let mut game = Game {
             game_type: GameType::Temperatures,
             in_progress: true,
             level: 3,

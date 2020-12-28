@@ -1,7 +1,7 @@
 mod logic;
 
 fn main() {
-    let mut game = logic::UnitsGame::new(logic::GameType::Temperatures);
+    let mut game = logic::Game::new(logic::GameType::Temperatures);
     let mut quit = false;
     while !quit && game.in_progress {
         println!("{:?}", game);
