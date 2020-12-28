@@ -1,9 +1,20 @@
+use std::fmt;
+
 use rand::random;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Unit {
     Celsius,
     Fahrenheit,
+}
+
+impl fmt::Display for Unit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Unit::Celsius => f.write_str("C"),
+            Unit::Fahrenheit => f.write_str("F"),
+        }
+    }
 }
 
 type Float = f32;
@@ -22,10 +33,10 @@ pub enum GameType {
     Temperatures,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Challenge {
-    left_choice: Choice,
-    right_choice: Choice,
+    pub left_choice: Choice,
+    pub right_choice: Choice,
 }
 
 impl Challenge {
@@ -37,11 +48,11 @@ impl Challenge {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Choice {
-    unit: Unit,
-    value: Float,
-    equivalent: Float,
+    pub unit: Unit,
+    pub value: Float,
+    pub equivalent: Float,
 }
 
 #[derive(Debug)]

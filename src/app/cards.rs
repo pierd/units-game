@@ -1,8 +1,8 @@
-use crate::logic::GameType;
+use crate::logic::{Challenge, ChoiceSelection, Game, GameType};
 use super::gestures::PointerEvent;
-use super::{App, ViewController};
+use super::{log, App, State, ViewController};
 
-use std::cell::RefCell;
+use std::{cell::RefCell, fmt::Pointer, thread::current};
 use std::rc::Rc;
 
 use wasm_bindgen::prelude::Closure;
@@ -27,29 +27,123 @@ impl ViewController for CardsController {
     }
 
     fn hide(&mut self) {
+        log!("hiding cards pre borrow");
         self.controller.borrow_mut().hide();
+    }
+}
+
+struct Card {
+    card: Element,
+    left: Element,
+    right: Element,
+}
+
+impl Card {
+    fn new(challenge: Challenge) -> Self {
+        let document = window().unwrap().document().unwrap();
+
+        // create card view
+        let card = document
+            .create_element("div")
+            .expect("create_element failed");
+        card.set_class_name("card");
+
+        // create left side of the card
+        let left_choice = challenge.left_choice;
+        let left = document
+            .create_element("div")
+            .expect("create_element failed");
+        left.set_class_name("left");
+        left.set_inner_html(&format!("{} {}", left_choice.value, left_choice.unit));
+        card.append_with_node_1(&left)
+            .expect("append_with_node_1 failed");
+
+        // create right side of the card
+        let right_choice = challenge.right_choice;
+        let right = document
+            .create_element("div")
+            .expect("create_element failed");
+        right.set_class_name("right");
+        right.set_inner_html(&format!("{} {}", right_choice.value, right_choice.unit));
+        card.append_with_node_1(&right)
+            .expect("append_with_node_1 failed");
+
+        Self { card, left, right }
+    }
+
+    fn set_translate(&mut self, translate_x: i32) {
+        self.card.set_attribute(
+            "style",
+            &format!(
+                "transform: translate({}px, 0px) rotate({}deg);",
+                translate_x,
+                translate_x as f32 / 10.0
+            ),
+        )
+        .expect("set style failed");
+
+        let scale_adjust = translate_x as f32 / 100.0;
+        let left_scale = if scale_adjust > 1.0 {
+            0.0
+        } else {
+            1.0 - scale_adjust
+        };
+        self.left.set_attribute(
+            "style",
+            &format!("transform: scale({}, {});", left_scale, left_scale),
+        )
+        .expect("set style failed");
+        let right_scale = if scale_adjust < -1.0 {
+            0.0
+        } else {
+            1.0 + scale_adjust
+        };
+        self.right
+            .set_attribute(
+                "style",
+                &format!("transform: scale({}, {});", right_scale, right_scale),
+            )
+            .expect("set style failed");
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum PostGestureAction {
+    TransitionApp(State),
+}
+
+impl PostGestureAction {
+    fn perform(&self, controller: Rc<RefCell<CardsControllerImpl>>) {
+        log!("performing action: {:?}", self);
+        match self {
+            PostGestureAction::TransitionApp(state) => {
+                // cloning the app to break the stack of borrowing the controller
+                let app = controller.borrow().app.clone();
+                app.transition(*state)
+            },
+        }
     }
 }
 
 struct CardsControllerImpl {
     app: App,
+    game: Game,
     view: Option<Element>,
 
     pan_start_x: Option<i32>,
-    card: Option<Element>,
-    left: Option<Element>,
-    right: Option<Element>,
+    translate_x: i32,
+    card: Option<Card>,
 }
 
 impl CardsControllerImpl {
-    fn new(app: App, _game_type: GameType) -> Rc<RefCell<Self>> {
+    fn new(app: App, game_type: GameType) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self {
             app,
+            game: Game::new(game_type),
             view: None,
             pan_start_x: None,
+            translate_x: 0,
             card: None,
-            left: None,
-            right: None,
         }))
     }
 
@@ -64,38 +158,11 @@ impl CardsControllerImpl {
             .create_element("div")
             .expect("create_element failed");
         view.set_class_name("cards");
-
-        // create card view
-        let card = document
-            .create_element("div")
-            .expect("create_element failed");
-        card.set_class_name("card");
-
-        // create left side of the card
-        let left = document
-            .create_element("div")
-            .expect("create_element failed");
-        left.set_class_name("left");
-        left.set_inner_html("30 C");
-        card.append_with_node_1(&left)
-            .expect("append_with_node_1 failed");
-        controller.left = Some(left);
-
-        // create right side of the card
-        let right = document
-            .create_element("div")
-            .expect("create_element failed");
-        right.set_class_name("right");
-        right.set_inner_html("90 F");
-        card.append_with_node_1(&right)
-            .expect("append_with_node_1 failed");
-        controller.right = Some(right);
-
-        // store the main view and current card
-        view.append_with_node_1(&card)
-            .expect("append_with_node_1 failed");
         controller.view = Some(view.clone());
-        controller.card = Some(card.clone());
+
+        // create card and add it to the view
+        let card = Card::new(controller.game.challenge);
+        controller.replace_card(card);
 
         // release the controller borrow
         let _ = controller;
@@ -110,7 +177,11 @@ impl CardsControllerImpl {
         let mouse_up = {
             let controller = self_.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                controller.borrow_mut().pointer_end(event);
+                // separate var to break to borrow stack
+                let action_option = controller.borrow_mut().pointer_end(event);
+                if let Some(action) = action_option {
+                    action.perform(controller.clone());
+                }
             }) as Box<dyn FnMut(_)>)
         };
         let mouse_down = {
@@ -129,7 +200,11 @@ impl CardsControllerImpl {
         let touch_end = {
             let controller = self_.clone();
             Closure::wrap(Box::new(move |event: TouchEvent| {
-                controller.borrow_mut().pointer_end(event);
+                // separate var to break to borrow stack
+                let action_option = controller.borrow_mut().pointer_end(event);
+                if let Some(action) = action_option {
+                    action.perform(controller.clone());
+                }
             }) as Box<dyn FnMut(_)>)
         };
         let touch_start = {
@@ -168,68 +243,77 @@ impl CardsControllerImpl {
         view
     }
 
-    fn set_card_translate(&mut self, translate_x: i32) {
-        if let (&mut Some(ref mut card), &mut Some(ref mut left), &mut Some(ref mut right)) =
-            (&mut self.card, &mut self.left, &mut self.right)
-        {
-            card.set_attribute(
-                "style",
-                &format!(
-                    "transform: translate({}px, 0px) rotate({}deg);",
-                    translate_x,
-                    translate_x as f32 / 10.0
-                ),
-            )
-            .expect("set style failed");
+    fn replace_card(&mut self, card: Card) {
+        if let Some(ref old_card) = self.card {
+            old_card.card.remove();
+        }
+        if let Some(ref view) = self.view {
+            view.append_with_node_1(&card.card)
+                .expect("append_with_node_1 failed");
+        } else {
+            panic!("view missing");
+        }
+        self.card = Some(card);
+    }
 
-            let scale_adjust = translate_x as f32 / 100.0;
-            let left_scale = if scale_adjust > 1.0 {
-                0.0
-            } else {
-                1.0 - scale_adjust
-            };
-            left.set_attribute(
-                "style",
-                &format!("transform: scale({}, {});", left_scale, left_scale),
-            )
-            .expect("set style failed");
-            let right_scale = if scale_adjust < -1.0 {
-                0.0
-            } else {
-                1.0 + scale_adjust
-            };
-            right
-                .set_attribute(
-                    "style",
-                    &format!("transform: scale({}, {});", right_scale, right_scale),
-                )
-                .expect("set style failed");
+    fn update_card_translation_with_event<T: PointerEvent>(&mut self, event: T) -> i32 {
+        if let (Some(pan_start_x), Some(current_x)) = (self.pan_start_x, event.get_x()) {
+            let translation = current_x - pan_start_x;
+            self.update_card_translation(translation);
+            translation
+        } else {
+            self.translate_x
+        }
+    }
+
+    fn update_card_translation(&mut self, translation_x: i32) {
+        self.translate_x = translation_x;
+        if let Some(ref mut card) = self.card {
+            card.set_translate(translation_x);
         }
     }
 
     fn pointer_start<T: PointerEvent>(&mut self, event: T) {
-        self.pan_start_x = Some(event.get_x());
+        self.pan_start_x = event.get_x();
+        self.translate_x = 0;
     }
 
-    fn pointer_end<T: PointerEvent>(&mut self, _event: T) {
+    fn pointer_end<T: PointerEvent>(&mut self, event: T) -> Option<PostGestureAction> {
+        let mut action = None;
+        let translate_x = self.update_card_translation_with_event(event);
+        log!("pan ended with translate_x: {}", translate_x);
+        if translate_x.abs() > 100 {
+            let selection = if translate_x < 0 {
+                ChoiceSelection::Left
+            } else {
+                ChoiceSelection::Right
+            };
+            self.game.pick(selection);
+            if !self.game.in_progress {
+                // transition to Menu once the gesture processing is done
+                log!("ending game");
+                action = Some(PostGestureAction::TransitionApp(State::Menu));
+            } else {
+                // game is still on -> set new card
+                self.replace_card(Card::new(self.game.challenge));
+            }
+        }
         self.pan_start_x = None;
-        self.set_card_translate(0);
+        self.update_card_translation(0);
+        action
     }
 
     fn pointer_move<T: PointerEvent>(&mut self, event: T) {
-        if let Some(pan_start_x) = self.pan_start_x {
-            self.set_card_translate(event.get_x() - pan_start_x);
-        }
+        self.update_card_translation_with_event(event);
     }
 
     fn hide(&mut self) {
+        log!("hiding cards");
         if let Some(ref view) = self.view {
             view.remove();
         }
         self.pan_start_x = None;
         self.view = None;
         self.card = None;
-        self.left = None;
-        self.right = None;
     }
 }

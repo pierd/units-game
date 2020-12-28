@@ -1,4 +1,4 @@
-use crate::logic::GameType;
+use crate::{log, logic::GameType};
 use super::{App, State, ViewController};
 
 use wasm_bindgen::prelude::Closure;
@@ -55,6 +55,7 @@ impl ViewController for MenuController {
     }
 
     fn hide(&mut self) {
+        log!("hiding menu");
         if let Some(ref view) = self.view {
             view.remove();
         }
