@@ -1,5 +1,6 @@
+use crate::logic::GameType;
 use super::gestures::PointerEvent;
-use super::{Game, GameType, ViewController};
+use super::{App, ViewController};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -13,9 +14,9 @@ pub struct CardsController {
 }
 
 impl CardsController {
-    pub fn new(game: Game, game_type: GameType) -> Self {
+    pub fn new(app: App, game_type: GameType) -> Self {
         Self {
-            controller: CardsControllerImpl::new(game, game_type),
+            controller: CardsControllerImpl::new(app, game_type),
         }
     }
 }
@@ -31,7 +32,7 @@ impl ViewController for CardsController {
 }
 
 struct CardsControllerImpl {
-    game: Game,
+    app: App,
     view: Option<Element>,
 
     pan_start_x: Option<i32>,
@@ -41,9 +42,9 @@ struct CardsControllerImpl {
 }
 
 impl CardsControllerImpl {
-    fn new(game: Game, _game_type: GameType) -> Rc<RefCell<Self>> {
+    fn new(app: App, _game_type: GameType) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self {
-            game,
+            app,
             view: None,
             pan_start_x: None,
             card: None,

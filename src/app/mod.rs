@@ -1,5 +1,5 @@
+use crate::logic::GameType;
 use super::log;
-use super::logic::GameType;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -13,16 +13,16 @@ mod gestures;
 mod menu;
 
 #[derive(Clone)]
-pub struct Game {
-    controller: Rc<RefCell<GameController>>,
+pub struct App {
+    controller: Rc<RefCell<AppController>>,
 }
 
-impl Game {
+impl App {
     pub fn new(content: Element) -> Self {
-        Self::wrap(GameController::new(content))
+        Self::wrap(AppController::new(content))
     }
 
-    fn wrap(controller: Rc<RefCell<GameController>>) -> Self {
+    fn wrap(controller: Rc<RefCell<AppController>>) -> Self {
         Self { controller }
     }
 
@@ -31,7 +31,7 @@ impl Game {
     }
 
     pub fn transition(&self, state: State) {
-        GameController::transition(self.controller.clone(), state);
+        AppController::transition(self.controller.clone(), state);
     }
 }
 
@@ -46,12 +46,12 @@ trait ViewController {
     fn hide(&mut self);
 }
 
-struct GameController {
+struct AppController {
     content: Element,
     sub_controller: Option<Box<dyn ViewController>>,
 }
 
-impl GameController {
+impl AppController {
     fn new(content: Element) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self {
             content,
@@ -63,14 +63,14 @@ impl GameController {
         log!("Transitioning to: {:?}", state);
         self_
             .borrow_mut()
-            .show_view_controller(GameController::create_view_controller(self_.clone(), state));
+            .show_view_controller(AppController::create_view_controller(self_.clone(), state));
     }
 
     fn create_view_controller(self_: Rc<RefCell<Self>>, state: State) -> Box<dyn ViewController> {
         match state {
-            State::Menu => Box::new(MenuController::new(Game::wrap(self_.clone()))),
+            State::Menu => Box::new(MenuController::new(App::wrap(self_.clone()))),
             State::Playing(game_type) => {
-                Box::new(CardsController::new(Game::wrap(self_.clone()), game_type))
+                Box::new(CardsController::new(App::wrap(self_.clone()), game_type))
             }
         }
     }

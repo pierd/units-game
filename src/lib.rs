@@ -1,13 +1,13 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::{window, Element};
 
-mod game;
+mod app;
 mod logging;
 mod logic;
 
 #[wasm_bindgen]
 pub struct Module {
-    game: game::Game,
+    app: app::App,
     content: Element,
 }
 
@@ -21,7 +21,7 @@ impl Module {
             .get_element_by_id(&content_id)
             .expect("get_element_by_id failed");
         Self {
-            game: game::Game::new(element.clone()),
+            app: app::App::new(element.clone()),
             content: element,
         }
     }
@@ -29,7 +29,7 @@ impl Module {
     #[wasm_bindgen]
     pub fn start(&mut self) {
         log!("Starting in: {}", self.content.id());
-        self.game.run();
+        self.app.run();
         log!("Started.");
     }
 }

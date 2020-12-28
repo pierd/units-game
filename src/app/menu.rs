@@ -1,17 +1,18 @@
-use super::{Game, GameType, State, ViewController};
+use crate::logic::GameType;
+use super::{App, State, ViewController};
 
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{window, Element, MouseEvent};
 
 pub struct MenuController {
-    game: Game,
+    app: App,
     view: Option<Element>,
 }
 
 impl MenuController {
-    pub fn new(game: Game) -> Self {
-        Self { game, view: None }
+    pub fn new(app: App) -> Self {
+        Self { app, view: None }
     }
 }
 
@@ -41,9 +42,9 @@ impl ViewController for MenuController {
 
         // attach handlers
         let click = {
-            let game = self.game.clone();
+            let app = self.app.clone();
             Closure::wrap(Box::new(move |_event: MouseEvent| {
-                game.transition(State::Playing(GameType::Temperatures));
+                app.transition(State::Playing(GameType::Temperatures));
             }) as Box<dyn FnMut(_)>)
         };
         view.add_event_listener_with_callback("click", click.as_ref().unchecked_ref())
