@@ -47,7 +47,8 @@ impl ViewController for MenuController {
                 app.transition(State::Playing(GameType::Temperatures));
             }) as Box<dyn FnMut(_)>)
         };
-        view.add_event_listener_with_callback("click", click.as_ref().unchecked_ref())
+        temperature
+            .add_event_listener_with_callback("click", click.as_ref().unchecked_ref())
             .unwrap();
         click.forget();
 
