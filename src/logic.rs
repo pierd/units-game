@@ -66,8 +66,7 @@ impl GameType {
         let c_difference = 50.0 - 5.0 * level as Float;
         let mut c_temperature = -10.0 + 50.0 * random::<Float>();
         let f_higher = random::<bool>();
-        let mut f_temperature =
-            celsius_to_fahrenheit(c_temperature + if f_higher { 1.0 } else { -1.0 } * c_difference);
+        let mut f_temperature = celsius_to_fahrenheit(c_temperature + if f_higher { 1.0 } else { -1.0 } * c_difference);
         if f_higher {
             c_temperature = c_temperature.floor();
             f_temperature = f_temperature.ceil();

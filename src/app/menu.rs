@@ -23,15 +23,11 @@ impl ViewController for MenuController {
         let document = window().unwrap().document().unwrap();
 
         // create simple menu
-        let view = document
-            .create_element("div")
-            .expect("create_element failed");
+        let view = document.create_element("div").expect("create_element failed");
         view.set_id("menu");
         view.set_class_name("menu");
 
-        let temperature = document
-            .create_element("div")
-            .expect("create_element failed");
+        let temperature = document.create_element("div").expect("create_element failed");
         temperature.set_class_name("menu-button");
         temperature.set_inner_html("C/F");
 

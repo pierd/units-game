@@ -43,30 +43,22 @@ impl Card {
         let document = window().unwrap().document().unwrap();
 
         // create card view
-        let card = document
-            .create_element("div")
-            .expect("create_element failed");
+        let card = document.create_element("div").expect("create_element failed");
         card.set_class_name("card");
 
         // create left side of the card
         let left_choice = challenge.left_choice;
-        let left = document
-            .create_element("div")
-            .expect("create_element failed");
+        let left = document.create_element("div").expect("create_element failed");
         left.set_class_name("left");
         left.set_inner_html(&format!("{} {}", left_choice.value, left_choice.unit));
-        card.append_with_node_1(&left)
-            .expect("append_with_node_1 failed");
+        card.append_with_node_1(&left).expect("append_with_node_1 failed");
 
         // create right side of the card
         let right_choice = challenge.right_choice;
-        let right = document
-            .create_element("div")
-            .expect("create_element failed");
+        let right = document.create_element("div").expect("create_element failed");
         right.set_class_name("right");
         right.set_inner_html(&format!("{} {}", right_choice.value, right_choice.unit));
-        card.append_with_node_1(&right)
-            .expect("append_with_node_1 failed");
+        card.append_with_node_1(&right).expect("append_with_node_1 failed");
 
         Self { card, left, right }
     }
@@ -84,27 +76,13 @@ impl Card {
             .expect("set style failed");
 
         let scale_adjust = translate_x as f32 / 100.0;
-        let left_scale = if scale_adjust > 1.0 {
-            0.0
-        } else {
-            1.0 - scale_adjust
-        };
+        let left_scale = if scale_adjust > 1.0 { 0.0 } else { 1.0 - scale_adjust };
         self.left
-            .set_attribute(
-                "style",
-                &format!("transform: scale({}, {});", left_scale, left_scale),
-            )
+            .set_attribute("style", &format!("transform: scale({}, {});", left_scale, left_scale))
             .expect("set style failed");
-        let right_scale = if scale_adjust < -1.0 {
-            0.0
-        } else {
-            1.0 + scale_adjust
-        };
+        let right_scale = if scale_adjust < -1.0 { 0.0 } else { 1.0 + scale_adjust };
         self.right
-            .set_attribute(
-                "style",
-                &format!("transform: scale({}, {});", right_scale, right_scale),
-            )
+            .set_attribute("style", &format!("transform: scale({}, {});", right_scale, right_scale))
             .expect("set style failed");
     }
 }
@@ -156,9 +134,7 @@ impl CardsControllerImpl {
         let document = window().unwrap().document().unwrap();
 
         // create main container for cards
-        let view = document
-            .create_element("div")
-            .expect("create_element failed");
+        let view = document.create_element("div").expect("create_element failed");
         view.set_class_name("cards");
         controller.view = Some(view.clone());
 
@@ -250,8 +226,7 @@ impl CardsControllerImpl {
             old_card.card.remove();
         }
         if let Some(ref view) = self.view {
-            view.append_with_node_1(&card.card)
-                .expect("append_with_node_1 failed");
+            view.append_with_node_1(&card.card).expect("append_with_node_1 failed");
         } else {
             panic!("view missing");
         }

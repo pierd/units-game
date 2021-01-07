@@ -69,9 +69,7 @@ impl AppController {
     fn create_view_controller(self_: Rc<RefCell<Self>>, state: State) -> Box<dyn ViewController> {
         match state {
             State::Menu => Box::new(MenuController::new(App::wrap(self_.clone()))),
-            State::Playing(game_type) => {
-                Box::new(CardsController::new(App::wrap(self_.clone()), game_type))
-            }
+            State::Playing(game_type) => Box::new(CardsController::new(App::wrap(self_.clone()), game_type)),
         }
     }
 
