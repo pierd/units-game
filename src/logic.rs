@@ -66,7 +66,8 @@ impl GameType {
         let c_difference = 50.0 - 5.0 * level as Float;
         let mut c_temperature = -10.0 + 50.0 * random::<Float>();
         let f_higher = random::<bool>();
-        let mut f_temperature = celsius_to_fahrenheit(c_temperature + if f_higher { 1.0 } else { -1.0 } * c_difference);
+        let mut f_temperature =
+            celsius_to_fahrenheit(c_temperature + if f_higher { 1.0 } else { -1.0 } * c_difference);
         if f_higher {
             c_temperature = c_temperature.floor();
             f_temperature = f_temperature.ceil();
@@ -78,12 +79,12 @@ impl GameType {
         let left_choice = Choice {
             unit: Unit::Celsius,
             value: c_temperature,
-            equivalent: celsius_to_fahrenheit(c_temperature)
+            equivalent: celsius_to_fahrenheit(c_temperature),
         };
         let right_choice = Choice {
             unit: Unit::Fahrenheit,
             value: f_temperature,
-            equivalent: fahrenheit_to_celsius(f_temperature)
+            equivalent: fahrenheit_to_celsius(f_temperature),
         };
         if random::<bool>() {
             Challenge {
@@ -156,8 +157,16 @@ mod tests {
             in_progress: true,
             level: 3,
             challenge: Challenge {
-                left_choice: Choice { unit: Unit::Celsius, value: 30.0, equivalent: 30.0 },
-                right_choice: Choice { unit: Unit::Celsius, value: 10.0, equivalent: 10.0 },
+                left_choice: Choice {
+                    unit: Unit::Celsius,
+                    value: 30.0,
+                    equivalent: 30.0,
+                },
+                right_choice: Choice {
+                    unit: Unit::Celsius,
+                    value: 10.0,
+                    equivalent: 10.0,
+                },
             },
         };
         game.pick(ChoiceSelection::Left);
@@ -172,8 +181,16 @@ mod tests {
             in_progress: true,
             level: 3,
             challenge: Challenge {
-                left_choice: Choice { unit: Unit::Celsius, value: 30.0, equivalent: 30.0 },
-                right_choice: Choice { unit: Unit::Celsius, value: 10.0, equivalent: 10.0 },
+                left_choice: Choice {
+                    unit: Unit::Celsius,
+                    value: 30.0,
+                    equivalent: 30.0,
+                },
+                right_choice: Choice {
+                    unit: Unit::Celsius,
+                    value: 10.0,
+                    equivalent: 10.0,
+                },
             },
         };
         game.pick(ChoiceSelection::Right);

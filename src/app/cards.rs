@@ -1,8 +1,8 @@
-use crate::logic::{Challenge, ChoiceSelection, Game, GameType};
 use super::gestures::PointerEvent;
 use super::{log, App, State, ViewController};
+use crate::logic::{Challenge, ChoiceSelection, Game, GameType};
 
-use std::{cell::RefCell, fmt::Pointer, thread::current};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use wasm_bindgen::prelude::Closure;
@@ -72,15 +72,16 @@ impl Card {
     }
 
     fn set_translate(&mut self, translate_x: i32) {
-        self.card.set_attribute(
-            "style",
-            &format!(
-                "transform: translate({}px, 0px) rotate({}deg);",
-                translate_x,
-                translate_x as f32 / 10.0
-            ),
-        )
-        .expect("set style failed");
+        self.card
+            .set_attribute(
+                "style",
+                &format!(
+                    "transform: translate({}px, 0px) rotate({}deg);",
+                    translate_x,
+                    translate_x as f32 / 10.0
+                ),
+            )
+            .expect("set style failed");
 
         let scale_adjust = translate_x as f32 / 100.0;
         let left_scale = if scale_adjust > 1.0 {
@@ -88,11 +89,12 @@ impl Card {
         } else {
             1.0 - scale_adjust
         };
-        self.left.set_attribute(
-            "style",
-            &format!("transform: scale({}, {});", left_scale, left_scale),
-        )
-        .expect("set style failed");
+        self.left
+            .set_attribute(
+                "style",
+                &format!("transform: scale({}, {});", left_scale, left_scale),
+            )
+            .expect("set style failed");
         let right_scale = if scale_adjust < -1.0 {
             0.0
         } else {
@@ -120,7 +122,7 @@ impl PostGestureAction {
                 // cloning the app to break the stack of borrowing the controller
                 let app = controller.borrow().app.clone();
                 app.transition(*state)
-            },
+            }
         }
     }
 }

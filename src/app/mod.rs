@@ -1,5 +1,5 @@
-use crate::logic::GameType;
 use super::log;
+use crate::logic::GameType;
 
 use std::cell::RefCell;
 use std::rc::Rc;

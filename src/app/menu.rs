@@ -1,5 +1,5 @@
-use crate::{log, logic::GameType};
 use super::{App, State, ViewController};
+use crate::{log, logic::GameType};
 
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
