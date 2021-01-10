@@ -1,5 +1,5 @@
 use super::gestures::PointerEvent;
-use super::{log, App, State, ViewController};
+use super::{log, Presenter, State, ViewController};
 use crate::logic::{Challenge, ChoiceSelection, Game, GameType};
 
 use std::cell::RefCell;
@@ -14,16 +14,16 @@ pub struct CardsController {
 }
 
 impl CardsController {
-    pub fn new(app: App, game_type: GameType) -> Self {
+    pub fn new(game_type: GameType) -> Self {
         Self {
-            controller: CardsControllerImpl::new(app, game_type),
+            controller: CardsControllerImpl::new(game_type),
         }
     }
 }
 
 impl ViewController for CardsController {
-    fn show(&mut self) -> Element {
-        CardsControllerImpl::show(self.controller.clone())
+    fn show(&mut self, presenter: Presenter) -> Element {
+        CardsControllerImpl::show(self.controller.clone(), presenter)
     }
 
     fn hide(&mut self) {
@@ -93,20 +93,18 @@ enum PostGestureAction {
 }
 
 impl PostGestureAction {
-    fn perform(&self, controller: Rc<RefCell<CardsControllerImpl>>) {
+    fn perform(&self, presenter: &Presenter) {
         log!("performing action: {:?}", self);
         match self {
             PostGestureAction::TransitionApp(state) => {
                 // cloning the app to break the stack of borrowing the controller
-                let app = controller.borrow().app.clone();
-                app.transition(*state)
+                presenter.transition(*state)
             }
         }
     }
 }
 
 struct CardsControllerImpl {
-    app: App,
     game: Game,
     view: Option<Element>,
 
@@ -116,9 +114,8 @@ struct CardsControllerImpl {
 }
 
 impl CardsControllerImpl {
-    fn new(app: App, game_type: GameType) -> Rc<RefCell<Self>> {
+    fn new(game_type: GameType) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self {
-            app,
             game: Game::new(game_type),
             view: None,
             pan_start_x: None,
@@ -127,7 +124,7 @@ impl CardsControllerImpl {
         }))
     }
 
-    fn show(self_: Rc<RefCell<Self>>) -> Element {
+    fn show(self_: Rc<RefCell<Self>>, presenter: Presenter) -> Element {
         let mut controller = self_.borrow_mut();
         assert_eq!(controller.view, None);
 
@@ -147,48 +144,62 @@ impl CardsControllerImpl {
 
         // attach gestures
         let mouse_move = {
-            let controller = self_.clone();
+            let controller = Rc::downgrade(&self_);
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                controller.borrow_mut().pointer_move(event);
+                controller
+                    .upgrade()
+                    .map(|controller| controller.borrow_mut().pointer_move(event));
             }) as Box<dyn FnMut(_)>)
         };
         let mouse_up = {
-            let controller = self_.clone();
+            let controller = Rc::downgrade(&self_);
+            let presenter = presenter.clone();
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                // separate var to break to borrow stack
-                let action_option = controller.borrow_mut().pointer_end(event);
-                if let Some(action) = action_option {
-                    action.perform(controller.clone());
+                if let Some(controller) = controller.upgrade() {
+                    // separate var to break to borrow stack
+                    let action_option = controller.borrow_mut().pointer_end(event);
+                    if let Some(action) = action_option {
+                        action.perform(&presenter);
+                    }
                 }
             }) as Box<dyn FnMut(_)>)
         };
         let mouse_down = {
-            let controller = self_.clone();
+            let controller = Rc::downgrade(&self_);
             Closure::wrap(Box::new(move |event: MouseEvent| {
-                controller.borrow_mut().pointer_start(event);
+                controller
+                    .upgrade()
+                    .map(|controller| controller.borrow_mut().pointer_start(event));
             }) as Box<dyn FnMut(_)>)
         };
 
         let touch_move = {
-            let controller = self_.clone();
+            let controller = Rc::downgrade(&self_);
             Closure::wrap(Box::new(move |event: TouchEvent| {
-                controller.borrow_mut().pointer_move(event);
+                controller
+                    .upgrade()
+                    .map(|controller| controller.borrow_mut().pointer_move(event));
             }) as Box<dyn FnMut(_)>)
         };
         let touch_end = {
-            let controller = self_.clone();
+            let controller = Rc::downgrade(&self_);
+            let presenter = presenter.clone();
             Closure::wrap(Box::new(move |event: TouchEvent| {
-                // separate var to break to borrow stack
-                let action_option = controller.borrow_mut().pointer_end(event);
-                if let Some(action) = action_option {
-                    action.perform(controller.clone());
+                if let Some(controller) = controller.upgrade() {
+                    // separate var to break to borrow stack
+                    let action_option = controller.borrow_mut().pointer_end(event);
+                    if let Some(action) = action_option {
+                        action.perform(&presenter);
+                    }
                 }
             }) as Box<dyn FnMut(_)>)
         };
         let touch_start = {
-            let controller = self_.clone();
+            let controller = Rc::downgrade(&self_);
             Closure::wrap(Box::new(move |event: TouchEvent| {
-                controller.borrow_mut().pointer_start(event);
+                controller
+                    .upgrade()
+                    .map(|controller| controller.borrow_mut().pointer_start(event));
             }) as Box<dyn FnMut(_)>)
         };
 

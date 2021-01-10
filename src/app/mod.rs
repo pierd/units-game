@@ -2,7 +2,7 @@ use super::log;
 use crate::logic::GameType;
 
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use cards::CardsController;
 use menu::MenuController;
@@ -35,6 +35,25 @@ impl App {
     }
 }
 
+#[derive(Clone)]
+pub struct Presenter {
+    controller: Weak<RefCell<AppController>>,
+}
+
+impl Presenter {
+    fn wrap(controller: &Rc<RefCell<AppController>>) -> Self {
+        Self {
+            controller: Rc::downgrade(controller),
+        }
+    }
+
+    pub fn transition(&self, state: State) {
+        self.controller.upgrade().map(|controller| {
+            AppController::transition(controller, state);
+        });
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum State {
     Menu,
@@ -42,7 +61,7 @@ pub enum State {
 }
 
 trait ViewController {
-    fn show(&mut self) -> Element;
+    fn show(&mut self, presenter: Presenter) -> Element;
     fn hide(&mut self);
 }
 
@@ -61,26 +80,27 @@ impl AppController {
 
     fn transition(self_: Rc<RefCell<Self>>, state: State) {
         log!("Transitioning to: {:?}", state);
-        self_
-            .borrow_mut()
-            .show_view_controller(AppController::create_view_controller(self_.clone(), state));
+        AppController::show_view_controller(self_, AppController::create_view_controller(state));
     }
 
-    fn create_view_controller(self_: Rc<RefCell<Self>>, state: State) -> Box<dyn ViewController> {
+    fn create_view_controller(state: State) -> Box<dyn ViewController> {
         match state {
-            State::Menu => Box::new(MenuController::new(App::wrap(self_.clone()))),
-            State::Playing(game_type) => Box::new(CardsController::new(App::wrap(self_.clone()), game_type)),
+            State::Menu => Box::new(MenuController::default()),
+            State::Playing(game_type) => Box::new(CardsController::new(game_type)),
         }
     }
 
-    fn show_view_controller(&mut self, mut view_controller: Box<dyn ViewController>) {
-        if let Some(ref mut sub_controller) = self.sub_controller {
+    fn show_view_controller(self_: Rc<RefCell<Self>>, mut view_controller: Box<dyn ViewController>) {
+        let presenter = Presenter::wrap(&self_);
+        let mut controller = self_.borrow_mut();
+        if let Some(ref mut sub_controller) = controller.sub_controller {
             sub_controller.hide();
         }
-        self.content
-            .append_with_node_1(&view_controller.show())
+        controller
+            .content
+            .append_with_node_1(&view_controller.show(presenter))
             .expect("append_with_node_1 failed");
-        self.sub_controller = Some(view_controller);
+        controller.sub_controller = Some(view_controller);
     }
 }
 
