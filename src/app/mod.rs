@@ -41,16 +41,16 @@ pub struct Presenter {
 }
 
 impl Presenter {
-    fn wrap(controller: &Rc<RefCell<AppController>>) -> Self {
-        Self {
-            controller: Rc::downgrade(controller),
-        }
-    }
-
     pub fn transition(&self, state: State) {
         self.controller.upgrade().map(|controller| {
             AppController::transition(controller, state);
         });
+    }
+}
+
+impl From<Weak<RefCell<AppController>>> for Presenter {
+    fn from(controller: Weak<RefCell<AppController>>) -> Self {
+        Self { controller }
     }
 }
 
@@ -91,7 +91,7 @@ impl AppController {
     }
 
     fn show_view_controller(self_: Rc<RefCell<Self>>, mut view_controller: Box<dyn ViewController>) {
-        let presenter = Presenter::wrap(&self_);
+        let presenter = Rc::downgrade(&self_).into();
         let mut controller = self_.borrow_mut();
         if let Some(ref mut sub_controller) = controller.sub_controller {
             sub_controller.hide();
