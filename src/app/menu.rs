@@ -1,7 +1,7 @@
 use super::{Presenter, Reaction, State, ViewController};
 use crate::{log, logic::GameType};
 
-use web_sys::{window, Element, MouseEvent};
+use web_sys::{window, Element};
 pub struct MenuController {
     view: Option<Element>,
 }
@@ -33,9 +33,11 @@ impl ViewController for MenuController {
         self.view = Some(view.clone());
 
         // attach handlers
-        presenter.add_event_listener(&temperature, "click", |_: &mut MenuController, _: MouseEvent| {
-            Some(Reaction::Transition(State::Playing(GameType::Temperatures)))
-        });
+        presenter.add_event_reaction(
+            &temperature,
+            "click",
+            Reaction::Transition(State::Playing(GameType::Temperatures)),
+        );
 
         view
     }

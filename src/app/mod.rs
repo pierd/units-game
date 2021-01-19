@@ -37,10 +37,6 @@ impl App {
     }
 }
 
-pub enum Reaction {
-    Transition(State),
-}
-
 #[derive(Clone)]
 pub struct Presenter {
     controller: Weak<RefCell<AppController>>,
@@ -75,12 +71,32 @@ impl Presenter {
             .unwrap();
         closure.forget();
     }
+
+    pub fn add_event_reaction(&mut self, element: &Element, event_name: &str, reaction: Reaction) {
+        let closure = {
+            let controller = self.controller.clone();
+            Closure::wrap(Box::new(move || {
+                if let Some(app_controller) = controller.upgrade() {
+                    AppController::react(app_controller, reaction);
+                }
+            }) as Box<dyn FnMut()>)
+        };
+        element
+            .add_event_listener_with_callback(event_name, closure.as_ref().unchecked_ref())
+            .unwrap();
+        closure.forget();
+    }
 }
 
 impl From<Weak<RefCell<AppController>>> for Presenter {
     fn from(controller: Weak<RefCell<AppController>>) -> Self {
         Self { controller }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Reaction {
+    Transition(State),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
