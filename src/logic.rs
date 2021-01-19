@@ -30,7 +30,11 @@ fn fahrenheit_to_celsius(fahrenheit: Float) -> Float {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GameType {
-    Temperatures,
+    Temperature,
+    Length,
+    Area,
+    Volume,
+    Mass,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -146,13 +150,13 @@ mod tests {
 
     #[test]
     fn new_game_is_in_progress() {
-        assert_eq!(Game::new(GameType::Temperatures).in_progress, true);
+        assert_eq!(Game::new(GameType::Temperature).in_progress, true);
     }
 
     #[test]
     fn correct_pick_increases_level() {
         let mut game = Game {
-            game_type: GameType::Temperatures,
+            game_type: GameType::Temperature,
             in_progress: true,
             level: 3,
             challenge: Challenge {
@@ -176,7 +180,7 @@ mod tests {
     #[test]
     fn wrong_pick_stops_game() {
         let mut game = Game {
-            game_type: GameType::Temperatures,
+            game_type: GameType::Temperature,
             in_progress: true,
             level: 3,
             challenge: Challenge {

@@ -1,7 +1,7 @@
-use super::{Presenter, Reaction, State, ViewController};
-use crate::{log, logic::GameType};
+use super::{log, Presenter, Reaction, State, ViewController};
+use crate::logic::GameType;
 
-use web_sys::{window, Element};
+use web_sys::{window, Document, Element};
 pub struct MenuController {
     view: Option<Element>,
 }
@@ -22,22 +22,13 @@ impl ViewController for MenuController {
         let view = document.create_element("div").expect("create_element failed");
         view.set_id("menu");
         view.set_class_name("menu");
-
-        let temperature = document.create_element("div").expect("create_element failed");
-        temperature.set_class_name("menu-button");
-        temperature.set_inner_html("C/F");
-
-        view.append_with_node_1(&temperature)
-            .expect("append_with_node_1 failed");
-
         self.view = Some(view.clone());
 
-        // attach handlers
-        presenter.add_event_reaction(
-            &temperature,
-            "click",
-            Reaction::Transition(State::Playing(GameType::Temperatures)),
-        );
+        create_unit_button(&mut presenter, &document, &view, "C/F", GameType::Temperature);
+        create_unit_button(&mut presenter, &document, &view, "km/M", GameType::Length);
+        create_unit_button(&mut presenter, &document, &view, "m^2/???", GameType::Area);
+        create_unit_button(&mut presenter, &document, &view, "L/oz", GameType::Volume);
+        create_unit_button(&mut presenter, &document, &view, "kg,lbs", GameType::Mass);
 
         view
     }
@@ -49,4 +40,19 @@ impl ViewController for MenuController {
         }
         self.view = None;
     }
+}
+
+fn create_unit_button(
+    presenter: &mut Presenter,
+    document: &Document,
+    parent: &Element,
+    inner_html: &str,
+    game_type: GameType,
+) {
+    let button = document.create_element("div").expect("create_element failed");
+    button.set_class_name("menu-button");
+    button.set_inner_html(inner_html);
+    parent.append_with_node_1(&button).expect("append_with_node_1 failed");
+    // attach handlers
+    presenter.add_event_reaction(&button, "click", Reaction::Transition(State::Playing(game_type)));
 }
