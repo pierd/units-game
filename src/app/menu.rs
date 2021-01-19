@@ -1,10 +1,7 @@
-use super::{Presenter, State, ViewController};
+use super::{Presenter, Reaction, State, ViewController};
 use crate::{log, logic::GameType};
 
-use wasm_bindgen::prelude::Closure;
-use wasm_bindgen::JsCast;
 use web_sys::{window, Element, MouseEvent};
-
 pub struct MenuController {
     view: Option<Element>,
 }
@@ -16,7 +13,7 @@ impl Default for MenuController {
 }
 
 impl ViewController for MenuController {
-    fn show(&mut self, presenter: Presenter) -> Element {
+    fn show(&mut self, mut presenter: Presenter) -> Element {
         assert_eq!(self.view, None);
 
         let document = window().unwrap().document().unwrap();
@@ -36,15 +33,9 @@ impl ViewController for MenuController {
         self.view = Some(view.clone());
 
         // attach handlers
-        let click = {
-            Closure::wrap(Box::new(move |_event: MouseEvent| {
-                presenter.transition(State::Playing(GameType::Temperatures));
-            }) as Box<dyn FnMut(_)>)
-        };
-        temperature
-            .add_event_listener_with_callback("click", click.as_ref().unchecked_ref())
-            .unwrap();
-        click.forget();
+        presenter.add_event_listener(&temperature, "click", |_: &mut MenuController, _: MouseEvent| {
+            Some(Reaction::Transition(State::Playing(GameType::Temperatures)))
+        });
 
         view
     }

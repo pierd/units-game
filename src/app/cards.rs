@@ -1,36 +1,8 @@
 use super::gestures::PointerEvent;
-use super::{log, Presenter, State, ViewController};
+use super::{log, Presenter, Reaction, State, ViewController};
 use crate::logic::{Challenge, ChoiceSelection, Game, GameType};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use wasm_bindgen::prelude::Closure;
-use wasm_bindgen::JsCast;
 use web_sys::{window, Element, MouseEvent, TouchEvent};
-
-pub struct CardsController {
-    controller: Rc<RefCell<CardsControllerImpl>>,
-}
-
-impl CardsController {
-    pub fn new(game_type: GameType) -> Self {
-        Self {
-            controller: CardsControllerImpl::new(game_type),
-        }
-    }
-}
-
-impl ViewController for CardsController {
-    fn show(&mut self, presenter: Presenter) -> Element {
-        CardsControllerImpl::show(self.controller.clone(), presenter)
-    }
-
-    fn hide(&mut self) {
-        log!("hiding cards pre borrow");
-        self.controller.borrow_mut().hide();
-    }
-}
 
 struct Card {
     card: Element,
@@ -87,24 +59,7 @@ impl Card {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum PostGestureAction {
-    TransitionApp(State),
-}
-
-impl PostGestureAction {
-    fn perform(&self, presenter: &Presenter) {
-        log!("performing action: {:?}", self);
-        match self {
-            PostGestureAction::TransitionApp(state) => {
-                // cloning the app to break the stack of borrowing the controller
-                presenter.transition(*state)
-            }
-        }
-    }
-}
-
-struct CardsControllerImpl {
+pub struct CardsController {
     game: Game,
     view: Option<Element>,
 
@@ -113,123 +68,15 @@ struct CardsControllerImpl {
     card: Option<Card>,
 }
 
-impl CardsControllerImpl {
-    fn new(game_type: GameType) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Self {
+impl CardsController {
+    pub fn new(game_type: GameType) -> Self {
+        Self {
             game: Game::new(game_type),
             view: None,
             pan_start_x: None,
             translate_x: 0,
             card: None,
-        }))
-    }
-
-    fn show(self_: Rc<RefCell<Self>>, presenter: Presenter) -> Element {
-        let mut controller = self_.borrow_mut();
-        assert_eq!(controller.view, None);
-
-        let document = window().unwrap().document().unwrap();
-
-        // create main container for cards
-        let view = document.create_element("div").expect("create_element failed");
-        view.set_class_name("cards");
-        controller.view = Some(view.clone());
-
-        // create card and add it to the view
-        let card = Card::new(controller.game.challenge);
-        controller.replace_card(card);
-
-        // release the controller borrow
-        let _ = controller;
-
-        // attach gestures
-        let mouse_move = {
-            let controller = Rc::downgrade(&self_);
-            Closure::wrap(Box::new(move |event: MouseEvent| {
-                controller
-                    .upgrade()
-                    .map(|controller| controller.borrow_mut().pointer_move(event));
-            }) as Box<dyn FnMut(_)>)
-        };
-        let mouse_up = {
-            let controller = Rc::downgrade(&self_);
-            let presenter = presenter.clone();
-            Closure::wrap(Box::new(move |event: MouseEvent| {
-                if let Some(controller) = controller.upgrade() {
-                    // separate var to break to borrow stack
-                    let action_option = controller.borrow_mut().pointer_end(event);
-                    if let Some(action) = action_option {
-                        action.perform(&presenter);
-                    }
-                }
-            }) as Box<dyn FnMut(_)>)
-        };
-        let mouse_down = {
-            let controller = Rc::downgrade(&self_);
-            Closure::wrap(Box::new(move |event: MouseEvent| {
-                controller
-                    .upgrade()
-                    .map(|controller| controller.borrow_mut().pointer_start(event));
-            }) as Box<dyn FnMut(_)>)
-        };
-
-        let touch_move = {
-            let controller = Rc::downgrade(&self_);
-            Closure::wrap(Box::new(move |event: TouchEvent| {
-                controller
-                    .upgrade()
-                    .map(|controller| controller.borrow_mut().pointer_move(event));
-            }) as Box<dyn FnMut(_)>)
-        };
-        let touch_end = {
-            let controller = Rc::downgrade(&self_);
-            let presenter = presenter.clone();
-            Closure::wrap(Box::new(move |event: TouchEvent| {
-                if let Some(controller) = controller.upgrade() {
-                    // separate var to break to borrow stack
-                    let action_option = controller.borrow_mut().pointer_end(event);
-                    if let Some(action) = action_option {
-                        action.perform(&presenter);
-                    }
-                }
-            }) as Box<dyn FnMut(_)>)
-        };
-        let touch_start = {
-            let controller = Rc::downgrade(&self_);
-            Closure::wrap(Box::new(move |event: TouchEvent| {
-                controller
-                    .upgrade()
-                    .map(|controller| controller.borrow_mut().pointer_start(event));
-            }) as Box<dyn FnMut(_)>)
-        };
-
-        view.add_event_listener_with_callback("mousedown", mouse_down.as_ref().unchecked_ref())
-            .unwrap();
-        view.add_event_listener_with_callback("mouseup", mouse_up.as_ref().unchecked_ref())
-            .unwrap();
-        view.add_event_listener_with_callback("mousemove", mouse_move.as_ref().unchecked_ref())
-            .unwrap();
-        view.add_event_listener_with_callback("mouseleave", mouse_up.as_ref().unchecked_ref())
-            .unwrap();
-
-        view.add_event_listener_with_callback("touchstart", touch_start.as_ref().unchecked_ref())
-            .unwrap();
-        view.add_event_listener_with_callback("touchend", touch_end.as_ref().unchecked_ref())
-            .unwrap();
-        view.add_event_listener_with_callback("touchmove", touch_move.as_ref().unchecked_ref())
-            .unwrap();
-        view.add_event_listener_with_callback("touchcancel", touch_end.as_ref().unchecked_ref())
-            .unwrap();
-
-        mouse_move.forget();
-        mouse_up.forget();
-        mouse_down.forget();
-        touch_move.forget();
-        touch_end.forget();
-        touch_start.forget();
-
-        // return card as the main view
-        view
+        }
     }
 
     fn replace_card(&mut self, card: Card) {
@@ -261,13 +108,14 @@ impl CardsControllerImpl {
         }
     }
 
-    fn pointer_start<T: PointerEvent>(&mut self, event: T) {
+    fn pointer_start<T: PointerEvent>(&mut self, event: T) -> Option<Reaction> {
         self.pan_start_x = event.get_x();
         self.translate_x = 0;
+        None
     }
 
-    fn pointer_end<T: PointerEvent>(&mut self, event: T) -> Option<PostGestureAction> {
-        let mut action = None;
+    fn pointer_end<T: PointerEvent>(&mut self, event: T) -> Option<Reaction> {
+        let mut reaction = None;
         let translate_x = self.update_card_translation_with_event(event);
         log!("pan ended with translate_x: {}", translate_x);
         if translate_x.abs() > 100 {
@@ -280,7 +128,7 @@ impl CardsControllerImpl {
             if !self.game.in_progress {
                 // transition to Menu once the gesture processing is done
                 log!("ending game");
-                action = Some(PostGestureAction::TransitionApp(State::Menu));
+                reaction = Some(Reaction::Transition(State::Menu));
             } else {
                 // game is still on -> set new card
                 self.replace_card(Card::new(self.game.challenge));
@@ -288,15 +136,45 @@ impl CardsControllerImpl {
         }
         self.pan_start_x = None;
         self.update_card_translation(0);
-        action
+        reaction
     }
 
-    fn pointer_move<T: PointerEvent>(&mut self, event: T) {
+    fn pointer_move<T: PointerEvent>(&mut self, event: T) -> Option<Reaction> {
         self.update_card_translation_with_event(event);
+        None
+    }
+}
+
+impl ViewController for CardsController {
+    fn show(&mut self, mut presenter: Presenter) -> Element {
+        assert_eq!(self.view, None);
+
+        let document = window().unwrap().document().unwrap();
+
+        // create main container for cards
+        let view = document.create_element("div").expect("create_element failed");
+        view.set_class_name("cards");
+        self.view = Some(view.clone());
+
+        // create card and add it to the view
+        let card = Card::new(self.game.challenge);
+        self.replace_card(card);
+
+        // attach gestures
+        presenter.add_event_listener(&view, "mousedown", CardsController::pointer_start::<MouseEvent>);
+        presenter.add_event_listener(&view, "mouseup", CardsController::pointer_end::<MouseEvent>);
+        presenter.add_event_listener(&view, "mouseleave", CardsController::pointer_end::<MouseEvent>);
+        presenter.add_event_listener(&view, "mousemove", CardsController::pointer_move::<MouseEvent>);
+        presenter.add_event_listener(&view, "touchstart", CardsController::pointer_start::<TouchEvent>);
+        presenter.add_event_listener(&view, "touchend", CardsController::pointer_end::<TouchEvent>);
+        presenter.add_event_listener(&view, "touchcancel", CardsController::pointer_end::<TouchEvent>);
+        presenter.add_event_listener(&view, "touchmove", CardsController::pointer_move::<TouchEvent>);
+
+        // return card as the main view
+        view
     }
 
     fn hide(&mut self) {
-        log!("hiding cards");
         if let Some(ref view) = self.view {
             view.remove();
         }
