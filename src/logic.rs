@@ -7,6 +7,8 @@ use rand::seq::IteratorRandom;
 pub enum Unit {
     Celsius,
     Fahrenheit,
+    Kilometers,
+    NauticalMiles,
 }
 
 impl fmt::Display for Unit {
@@ -14,6 +16,8 @@ impl fmt::Display for Unit {
         match self {
             Unit::Celsius => f.write_str("C"),
             Unit::Fahrenheit => f.write_str("F"),
+            Unit::Kilometers => f.write_str("km"),
+            Unit::NauticalMiles => f.write_str("NM"),
         }
     }
 }
@@ -27,6 +31,14 @@ fn celsius_to_fahrenheit(celsius: Float) -> Float {
 
 fn fahrenheit_to_celsius(fahrenheit: Float) -> Float {
     (fahrenheit - 32.0) / 1.8
+}
+
+fn kilometers_to_nauticalmiles(kilometeres: Float) -> Float {
+    kilometeres / 1.852
+}
+
+fn nauticalmiles_to_kilometers(nauticalmiles: Float) -> Float {
+    nauticalmiles * 1.852
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -70,7 +82,7 @@ pub enum ChoiceSelection {
 }
 
 impl Quantity {
-    pub fn generate_challenge(&self, level: Level) -> Challenge {
+    fn generate_temperature_choices(level: Level) -> (Choice, Choice) {
         let c_difference = 50.0 - 5.0 * level as Float;
         let mut c_temperature = -10.0 + 50.0 * random::<Float>();
         let f_higher = random::<bool>();
@@ -83,15 +95,53 @@ impl Quantity {
             f_temperature = f_temperature.floor();
         }
 
-        let left_choice = Choice {
-            unit: Unit::Celsius,
-            value: c_temperature,
-            equivalent: celsius_to_fahrenheit(c_temperature),
-        };
-        let right_choice = Choice {
-            unit: Unit::Fahrenheit,
-            value: f_temperature,
-            equivalent: fahrenheit_to_celsius(f_temperature),
+        (
+            Choice {
+                unit: Unit::Celsius,
+                value: c_temperature,
+                equivalent: celsius_to_fahrenheit(c_temperature),
+            },
+            Choice {
+                unit: Unit::Fahrenheit,
+                value: f_temperature,
+                equivalent: fahrenheit_to_celsius(f_temperature),
+            },
+        )
+    }
+
+    fn generate_length_choices(level: Level) -> (Choice, Choice) {
+        // TODO: based on temperatures but doesn't really work - rething to have just one algo for all quantities
+        let km_difference = 1000.0 - 50.0 * level as Float;
+        let mut kms = 1000.0 * random::<Float>() + km_difference;
+        let nms_higher = random::<bool>();
+        let mut nms = kilometers_to_nauticalmiles(kms + if nms_higher { 1.0 } else { -1.0 } * km_difference);
+        if nms_higher {
+            kms = kms.floor();
+            nms = nms.ceil();
+        } else {
+            kms = kms.ceil();
+            nms = nms.floor();
+        }
+
+        (
+            Choice {
+                unit: Unit::Kilometers,
+                value: kms,
+                equivalent: kilometers_to_nauticalmiles(kms),
+            },
+            Choice {
+                unit: Unit::NauticalMiles,
+                value: nms,
+                equivalent: nauticalmiles_to_kilometers(nms),
+            },
+        )
+    }
+
+    pub fn generate_challenge(&self, level: Level) -> Challenge {
+        let (left_choice, right_choice) = match self {
+            Quantity::Temperature => Quantity::generate_temperature_choices(level),
+            Quantity::Length => Quantity::generate_length_choices(level),
+            _ => Quantity::generate_temperature_choices(level), // FIXME
         };
         if random::<bool>() {
             Challenge {
@@ -152,12 +202,18 @@ mod tests {
     }
 
     #[test]
-    fn temperature_conversations_work() {
+    fn temperature_conversions_work() {
         assert_eq!(celsius_to_fahrenheit(-40.0), fahrenheit_to_celsius(-40.0));
         assert!(floats_close_enough(celsius_to_fahrenheit(0.0), 32.0));
         assert!(floats_close_enough(celsius_to_fahrenheit(100.0), 212.0));
         assert!(floats_close_enough(fahrenheit_to_celsius(0.0), -17.777777));
         assert!(floats_close_enough(fahrenheit_to_celsius(100.0), 37.777777));
+    }
+
+    #[test]
+    fn length_conversions_work() {
+        assert_eq!(kilometers_to_nauticalmiles(0.0), nauticalmiles_to_kilometers(0.0));
+        assert!(floats_close_enough(nauticalmiles_to_kilometers(1000.0), 1852.0));
     }
 
     #[test]
