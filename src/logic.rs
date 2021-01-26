@@ -1,6 +1,7 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use rand::random;
+use rand::seq::IteratorRandom;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Unit {
@@ -28,17 +29,20 @@ fn fahrenheit_to_celsius(fahrenheit: Float) -> Float {
     (fahrenheit - 32.0) / 1.8
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum GameType {
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum Quantity {
     Temperature,
     Length,
     Area,
     Volume,
     Mass,
+    Energy,
+    Pressure,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Challenge {
+    pub quantity: Quantity,
     pub left_choice: Choice,
     pub right_choice: Choice,
 }
@@ -65,7 +69,7 @@ pub enum ChoiceSelection {
     Right,
 }
 
-impl GameType {
+impl Quantity {
     pub fn generate_challenge(&self, level: Level) -> Challenge {
         let c_difference = 50.0 - 5.0 * level as Float;
         let mut c_temperature = -10.0 + 50.0 * random::<Float>();
@@ -91,11 +95,13 @@ impl GameType {
         };
         if random::<bool>() {
             Challenge {
+                quantity: self.clone(),
                 left_choice,
                 right_choice,
             }
         } else {
             Challenge {
+                quantity: self.clone(),
                 left_choice: right_choice,
                 right_choice: left_choice,
             }
@@ -105,26 +111,32 @@ impl GameType {
 
 #[derive(Debug)]
 pub struct Game {
-    pub game_type: GameType,
     pub in_progress: bool,
-    pub level: Level,
+    pub level_per_quantity: HashMap<Quantity, Level>,
     pub challenge: Challenge,
 }
 
 impl Game {
-    pub fn new(game_type: GameType) -> Self {
+    pub fn new_with_single_quantity(quantity: Quantity) -> Self {
+        let mut level_per_quantity = HashMap::with_capacity(1);
+        level_per_quantity.insert(quantity, 0);
         Self {
-            game_type,
             in_progress: true,
-            level: 0,
-            challenge: game_type.generate_challenge(0),
+            level_per_quantity,
+            challenge: quantity.generate_challenge(0),
         }
     }
 
     pub fn pick(&mut self, selection: ChoiceSelection) {
         if self.challenge.is_correct(selection) {
-            self.level += 1;
-            self.challenge = self.game_type.generate_challenge(self.level);
+            self.level_per_quantity
+                .entry(self.challenge.quantity)
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+            let mut rng = rand::thread_rng();
+            let next_quantity = self.level_per_quantity.keys().choose(&mut rng).unwrap();
+            let level = self.level_per_quantity.get(next_quantity).unwrap_or(&0).clone();
+            self.challenge = next_quantity.generate_challenge(level);
         } else {
             self.in_progress = false;
         }
@@ -150,16 +162,18 @@ mod tests {
 
     #[test]
     fn new_game_is_in_progress() {
-        assert_eq!(Game::new(GameType::Temperature).in_progress, true);
+        assert_eq!(Game::new_with_single_quantity(Quantity::Temperature).in_progress, true);
     }
 
     #[test]
     fn correct_pick_increases_level() {
+        let mut level_per_quantity = HashMap::new();
+        level_per_quantity.insert(Quantity::Temperature, 3);
         let mut game = Game {
-            game_type: GameType::Temperature,
             in_progress: true,
-            level: 3,
+            level_per_quantity,
             challenge: Challenge {
+                quantity: Quantity::Temperature,
                 left_choice: Choice {
                     unit: Unit::Celsius,
                     value: 30.0,
@@ -173,17 +187,19 @@ mod tests {
             },
         };
         game.pick(ChoiceSelection::Left);
-        assert_eq!(game.level, 4);
+        assert_eq!(game.level_per_quantity.get(&Quantity::Temperature), Some(&4));
         assert_eq!(game.in_progress, true);
     }
 
     #[test]
     fn wrong_pick_stops_game() {
+        let mut level_per_quantity = HashMap::new();
+        level_per_quantity.insert(Quantity::Temperature, 3);
         let mut game = Game {
-            game_type: GameType::Temperature,
             in_progress: true,
-            level: 3,
+            level_per_quantity,
             challenge: Challenge {
+                quantity: Quantity::Temperature,
                 left_choice: Choice {
                     unit: Unit::Celsius,
                     value: 30.0,
@@ -197,7 +213,7 @@ mod tests {
             },
         };
         game.pick(ChoiceSelection::Right);
-        assert_eq!(game.level, 3);
+        assert_eq!(game.level_per_quantity.get(&Quantity::Temperature), Some(&3));
         assert_eq!(game.in_progress, false);
     }
 }

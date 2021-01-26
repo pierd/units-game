@@ -1,6 +1,6 @@
 use super::gestures::PointerEvent;
 use super::{log, Presenter, Reaction, State, ViewController};
-use crate::logic::{Challenge, ChoiceSelection, Game, GameType};
+use crate::logic::{Challenge, ChoiceSelection, Game, Quantity};
 
 use web_sys::{window, Element, MouseEvent, TouchEvent};
 
@@ -69,9 +69,9 @@ pub struct CardsController {
 }
 
 impl CardsController {
-    pub fn new(game_type: GameType) -> Self {
+    pub fn new(quantity: Quantity) -> Self {
         Self {
-            game: Game::new(game_type),
+            game: Game::new_with_single_quantity(quantity),
             view: None,
             pan_start_x: None,
             translate_x: 0,

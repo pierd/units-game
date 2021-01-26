@@ -1,5 +1,6 @@
+use crate::logic::Quantity;
+
 use super::log;
-use crate::logic::GameType;
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
@@ -102,7 +103,7 @@ pub enum Reaction {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum State {
     Menu,
-    Playing(GameType),
+    Playing(Quantity),
 }
 
 trait ViewController {

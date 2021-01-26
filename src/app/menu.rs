@@ -1,5 +1,6 @@
+use crate::logic::Quantity;
+
 use super::{log, Presenter, Reaction, State, ViewController};
-use crate::logic::GameType;
 
 use web_sys::{window, Document, Element};
 pub struct MenuController {
@@ -24,11 +25,11 @@ impl ViewController for MenuController {
         view.set_class_name("menu");
         self.view = Some(view.clone());
 
-        create_unit_button(&mut presenter, &document, &view, "C/F", GameType::Temperature);
-        create_unit_button(&mut presenter, &document, &view, "km/M", GameType::Length);
-        create_unit_button(&mut presenter, &document, &view, "m^2/???", GameType::Area);
-        create_unit_button(&mut presenter, &document, &view, "L/oz", GameType::Volume);
-        create_unit_button(&mut presenter, &document, &view, "kg,lbs", GameType::Mass);
+        create_unit_button(&mut presenter, &document, &view, "C/F", Quantity::Temperature);
+        create_unit_button(&mut presenter, &document, &view, "km/M", Quantity::Length);
+        create_unit_button(&mut presenter, &document, &view, "m^2/???", Quantity::Area);
+        create_unit_button(&mut presenter, &document, &view, "L/oz", Quantity::Volume);
+        create_unit_button(&mut presenter, &document, &view, "kg,lbs", Quantity::Mass);
 
         view
     }
@@ -47,12 +48,12 @@ fn create_unit_button(
     document: &Document,
     parent: &Element,
     inner_html: &str,
-    game_type: GameType,
+    quantity: Quantity,
 ) {
     let button = document.create_element("div").expect("create_element failed");
     button.set_class_name("menu-button");
     button.set_inner_html(inner_html);
     parent.append_with_node_1(&button).expect("append_with_node_1 failed");
     // attach handlers
-    presenter.add_event_reaction(&button, "click", Reaction::Transition(State::Playing(game_type)));
+    presenter.add_event_reaction(&button, "click", Reaction::Transition(State::Playing(quantity)));
 }
