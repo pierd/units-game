@@ -3,42 +3,75 @@ use std::{collections::HashMap, fmt};
 use rand::random;
 use rand::seq::IteratorRandom;
 
-#[derive(Clone, Copy, Debug)]
+type Float = f32;
+type Level = usize;
+
+/// Note: Units are ordered by their relative delta. That is a difference of a Fahrenheit degree is smaller than
+/// a difference of a Celsius degree or a foot is smaller than a meter and so on.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Unit {
-    Celsius,
+    // Temperature
     Fahrenheit,
-    Kilometers,
-    NauticalMiles,
+    Celsius,
+
+    // Length
+    Foot,
+    Meter,
+    Kilometer,
+    Mile,
+    NauticalMile,
+
+    // Volume
+    Millilitre,
+    FluidOunce, // US, not imperial
 }
 
 impl fmt::Display for Unit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Unit::Celsius => f.write_str("C"),
             Unit::Fahrenheit => f.write_str("F"),
-            Unit::Kilometers => f.write_str("km"),
-            Unit::NauticalMiles => f.write_str("NM"),
+            Unit::Celsius => f.write_str("C"),
+            Unit::Foot => f.write_str("ft"),
+            Unit::Meter => f.write_str("m"),
+            Unit::Kilometer => f.write_str("km"),
+            Unit::Mile => f.write_str("mi"),
+            Unit::NauticalMile => f.write_str("NM"),
+            Unit::Millilitre => f.write_str("ml"),
+            Unit::FluidOunce => f.write_str("fl oz"),
         }
     }
 }
 
-type Float = f32;
-type Level = usize;
+fn convert(value: Float, from: Unit, to: Unit) -> Float {
+    match (from, to) {
+        (x, y) if x == y => value,
 
-fn celsius_to_fahrenheit(celsius: Float) -> Float {
-    celsius * 1.8 + 32.0
-}
+        (Unit::Celsius, Unit::Fahrenheit) => value * 1.8 + 32.0,
+        (Unit::Fahrenheit, Unit::Celsius) => (value - 32.0) / 1.8,
 
-fn fahrenheit_to_celsius(fahrenheit: Float) -> Float {
-    (fahrenheit - 32.0) / 1.8
-}
+        (Unit::Meter, Unit::Foot) => value / 0.3048,
+        (Unit::Foot, Unit::Meter) => value * 0.3048,
 
-fn kilometers_to_nauticalmiles(kilometeres: Float) -> Float {
-    kilometeres / 1.852
-}
+        (Unit::Kilometer, Unit::NauticalMile) => value / 1.852,
+        (Unit::NauticalMile, Unit::Kilometer) => value * 1.852,
+        (Unit::Mile, Unit::Kilometer) => value / 1.609344,
+        (Unit::Kilometer, Unit::Mile) => value * 1.609344,
+        (Unit::Mile, Unit::NauticalMile) => convert(
+            convert(value, Unit::Mile, Unit::Kilometer),
+            Unit::Kilometer,
+            Unit::NauticalMile,
+        ),
+        (Unit::NauticalMile, Unit::Mile) => convert(
+            convert(value, Unit::NauticalMile, Unit::Kilometer),
+            Unit::Kilometer,
+            Unit::Mile,
+        ),
 
-fn nauticalmiles_to_kilometers(nauticalmiles: Float) -> Float {
-    nauticalmiles * 1.852
+        (Unit::Millilitre, Unit::FluidOunce) => value / 29.5735295625,
+        (Unit::FluidOunce, Unit::Millilitre) => value * 29.5735295625,
+
+        _ => panic!("can't convert from {:?} to {:?}", from, to),
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -82,11 +115,30 @@ pub enum ChoiceSelection {
 }
 
 impl Quantity {
+    pub fn unit_groups(&self) -> &[&[Unit]] {
+        match self {
+            Quantity::Temperature => &[&[Unit::Celsius, Unit::Fahrenheit]],
+            Quantity::Length => &[
+                &[Unit::Meter, Unit::Foot],
+                &[Unit::Kilometer, Unit::NauticalMile, Unit::Mile],
+            ],
+            Quantity::Area => &[],
+            Quantity::Volume => &[&[Unit::Millilitre, Unit::FluidOunce]],
+            Quantity::Mass => &[],
+            Quantity::Energy => &[],
+            Quantity::Pressure => &[],
+        }
+    }
+
     fn generate_temperature_choices(level: Level) -> (Choice, Choice) {
         let c_difference = 50.0 - 5.0 * level as Float;
         let mut c_temperature = -10.0 + 50.0 * random::<Float>();
         let f_higher = random::<bool>();
-        let mut f_temperature = celsius_to_fahrenheit(c_temperature + if f_higher { 1.0 } else { -1.0 } * c_difference);
+        let mut f_temperature = convert(
+            c_temperature + if f_higher { 1.0 } else { -1.0 } * c_difference,
+            Unit::Celsius,
+            Unit::Fahrenheit,
+        );
         if f_higher {
             c_temperature = c_temperature.floor();
             f_temperature = f_temperature.ceil();
@@ -99,12 +151,12 @@ impl Quantity {
             Choice {
                 unit: Unit::Celsius,
                 value: c_temperature,
-                equivalent: celsius_to_fahrenheit(c_temperature),
+                equivalent: convert(c_temperature, Unit::Celsius, Unit::Fahrenheit),
             },
             Choice {
                 unit: Unit::Fahrenheit,
                 value: f_temperature,
-                equivalent: fahrenheit_to_celsius(f_temperature),
+                equivalent: convert(f_temperature, Unit::Fahrenheit, Unit::Celsius),
             },
         )
     }
@@ -114,7 +166,11 @@ impl Quantity {
         let km_difference = 1000.0 - 50.0 * level as Float;
         let mut kms = 1000.0 * random::<Float>() + km_difference;
         let nms_higher = random::<bool>();
-        let mut nms = kilometers_to_nauticalmiles(kms + if nms_higher { 1.0 } else { -1.0 } * km_difference);
+        let mut nms = convert(
+            kms + if nms_higher { 1.0 } else { -1.0 } * km_difference,
+            Unit::Kilometer,
+            Unit::NauticalMile,
+        );
         if nms_higher {
             kms = kms.floor();
             nms = nms.ceil();
@@ -125,14 +181,14 @@ impl Quantity {
 
         (
             Choice {
-                unit: Unit::Kilometers,
+                unit: Unit::Kilometer,
                 value: kms,
-                equivalent: kilometers_to_nauticalmiles(kms),
+                equivalent: convert(kms, Unit::Kilometer, Unit::NauticalMile),
             },
             Choice {
-                unit: Unit::NauticalMiles,
+                unit: Unit::NauticalMile,
                 value: nms,
-                equivalent: nauticalmiles_to_kilometers(nms),
+                equivalent: convert(nms, Unit::NauticalMile, Unit::Kilometer),
             },
         )
     }
@@ -157,6 +213,8 @@ impl Quantity {
             }
         }
     }
+
+    // TODO: generate challenge based on unit_group, not on quantity
 }
 
 #[derive(Debug)]
@@ -202,18 +260,45 @@ mod tests {
     }
 
     #[test]
-    fn temperature_conversions_work() {
-        assert_eq!(celsius_to_fahrenheit(-40.0), fahrenheit_to_celsius(-40.0));
-        assert!(floats_close_enough(celsius_to_fahrenheit(0.0), 32.0));
-        assert!(floats_close_enough(celsius_to_fahrenheit(100.0), 212.0));
-        assert!(floats_close_enough(fahrenheit_to_celsius(0.0), -17.777777));
-        assert!(floats_close_enough(fahrenheit_to_celsius(100.0), 37.777777));
+    fn conversions_work() {
+        assert_eq!(
+            convert(-40.0, Unit::Celsius, Unit::Fahrenheit),
+            convert(-40.0, Unit::Fahrenheit, Unit::Celsius)
+        );
+        assert!(floats_close_enough(convert(0.0, Unit::Celsius, Unit::Celsius), 0.0));
+        assert!(floats_close_enough(convert(0.0, Unit::Celsius, Unit::Fahrenheit), 32.0));
+        assert!(floats_close_enough(
+            convert(100.0, Unit::Celsius, Unit::Fahrenheit),
+            212.0
+        ));
+        assert!(floats_close_enough(
+            convert(0.0, Unit::Fahrenheit, Unit::Celsius),
+            -17.777777
+        ));
+        assert!(floats_close_enough(
+            convert(100.0, Unit::Fahrenheit, Unit::Celsius),
+            37.777777
+        ));
+
+        assert_eq!(
+            convert(0.0, Unit::Kilometer, Unit::NauticalMile),
+            convert(0.0, Unit::NauticalMile, Unit::Kilometer)
+        );
+        assert!(floats_close_enough(
+            convert(1000.0, Unit::NauticalMile, Unit::Kilometer),
+            1852.0
+        ));
     }
 
     #[test]
-    fn length_conversions_work() {
-        assert_eq!(kilometers_to_nauticalmiles(0.0), nauticalmiles_to_kilometers(0.0));
-        assert!(floats_close_enough(nauticalmiles_to_kilometers(1000.0), 1852.0));
+    fn units_ordered_properly() {
+        assert!(Unit::Fahrenheit < Unit::Celsius);
+        assert!(Unit::Foot < Unit::Meter);
+        assert_eq!(
+            [Unit::Mile, Unit::Kilometer, Unit::NauticalMile].iter().min(),
+            Some(&Unit::Kilometer)
+        );
+        assert!(Unit::FluidOunce > Unit::Millilitre);
     }
 
     #[test]
