@@ -19,7 +19,7 @@ pub enum Quantity {
 
 /// Note: Units are ordered by their relative delta. That is a difference of a Fahrenheit degree is smaller than
 /// a difference of a Celsius degree or a foot is smaller than a meter and so on.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Unit {
     // Temperature
     Fahrenheit,
@@ -123,6 +123,29 @@ impl fmt::Display for Unit {
     }
 }
 
+impl Unit {
+    fn pair_with(self, other: Self) -> (Self, Self) {
+        if self < other {
+            (self, other)
+        } else {
+            (other, self)
+        }
+    }
+
+    fn level_delta(&self, level: Level) -> Float {
+        // FIXME
+        20.0
+    }
+
+    fn min_value(&self) -> Float {
+        0.0
+    }
+
+    fn max_value(&self) -> Float {
+        100.0
+    }
+}
+
 fn convert(value: Float, from: Unit, to: Unit) -> Option<Float> {
     match (from, to) {
         (x, y) if x == y => Some(value),
@@ -173,18 +196,21 @@ fn convert(value: Float, from: Unit, to: Unit) -> Option<Float> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct Challenge {
-    pub quantity: Quantity,
-    pub left_choice: Choice,
-    pub right_choice: Choice,
-}
-
-impl Challenge {
-    fn is_correct(&self, selection: ChoiceSelection) -> bool {
-        match selection {
-            ChoiceSelection::Left => self.left_choice.value > self.right_choice.equivalent,
-            ChoiceSelection::Right => self.right_choice.value > self.left_choice.equivalent,
+impl Quantity {
+    pub fn unit_pairs(&self) -> Vec<(Unit, Unit)> {
+        match self {
+            Quantity::Temperature => vec![Unit::Celsius.pair_with(Unit::Fahrenheit)],
+            Quantity::Length => vec![
+                (Unit::Meter, Unit::Foot),
+                (Unit::Kilometer, Unit::Mile),
+                (Unit::Kilometer, Unit::NauticalMile),
+                (Unit::NauticalMile, Unit::Mile),
+            ],
+            Quantity::Area => vec![(Unit::SquareFoot, Unit::SquareMeter), (Unit::Hectare, Unit::Acre)],
+            Quantity::Volume => vec![(Unit::Millilitre, Unit::FluidOunce), (Unit::Gallon, Unit::Litre)],
+            Quantity::Mass => vec![(Unit::Kilogram, Unit::Pound)],
+            Quantity::Energy => vec![(Unit::Calorie, Unit::Joule)],
+            Quantity::Pressure => vec![(Unit::Kilopascal, Unit::PoundPerSquareInch)],
         }
     }
 }
@@ -196,147 +222,115 @@ pub struct Choice {
     pub equivalent: Float,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum ChoiceSelection {
     Left,
     Right,
 }
 
-impl Quantity {
-    pub fn unit_pairs(&self) -> &[[Unit; 2]] {
-        match self {
-            Quantity::Temperature => &[[Unit::Celsius, Unit::Fahrenheit]],
-            Quantity::Length => &[
-                [Unit::Meter, Unit::Foot],
-                [Unit::Kilometer, Unit::Mile],
-                [Unit::Kilometer, Unit::NauticalMile],
-                [Unit::NauticalMile, Unit::Mile],
-            ],
-            Quantity::Area => &[[Unit::SquareFoot, Unit::SquareMeter], [Unit::Hectare, Unit::Acre]],
-            Quantity::Volume => &[[Unit::Millilitre, Unit::FluidOunce], [Unit::Gallon, Unit::Litre]],
-            Quantity::Mass => &[[Unit::Kilogram, Unit::Pound]],
-            Quantity::Energy => &[[Unit::Calorie, Unit::Joule]],
-            Quantity::Pressure => &[[Unit::Kilopascal, Unit::PoundPerSquareInch]],
+#[derive(Clone, Copy, Debug)]
+pub struct Challenge {
+    pub left_choice: Choice,
+    pub right_choice: Choice,
+}
+
+impl Challenge {
+    fn is_correct(&self, selection: ChoiceSelection) -> bool {
+        match selection {
+            ChoiceSelection::Left => self.left_choice.value > self.right_choice.equivalent,
+            ChoiceSelection::Right => self.right_choice.value > self.left_choice.equivalent,
         }
     }
 
-    fn generate_temperature_choices(level: Level) -> (Choice, Choice) {
-        let c_difference = 50.0 - 5.0 * level as Float;
-        let mut c_temperature = -10.0 + 50.0 * random::<Float>();
-        let f_higher = random::<bool>();
-        let mut f_temperature = convert(
-            c_temperature + if f_higher { 1.0 } else { -1.0 } * c_difference,
-            Unit::Celsius,
-            Unit::Fahrenheit,
-        )
-        .unwrap();
-        if f_higher {
-            c_temperature = c_temperature.floor();
-            f_temperature = f_temperature.ceil();
+    fn unit_pair(&self) -> (Unit, Unit) {
+        self.left_choice.unit.pair_with(self.right_choice.unit)
+    }
+
+    fn generate(unit_pair: (Unit, Unit), level: Level) -> Self {
+        assert_ne!(unit_pair.0, unit_pair.1);
+        let (bigger, smaller) = if unit_pair.0 < unit_pair.1 {
+            (unit_pair.1, unit_pair.0)
         } else {
-            c_temperature = c_temperature.ceil();
-            f_temperature = f_temperature.floor();
-        }
-
-        (
-            Choice {
-                unit: Unit::Celsius,
-                value: c_temperature,
-                equivalent: convert(c_temperature, Unit::Celsius, Unit::Fahrenheit).unwrap(),
-            },
-            Choice {
-                unit: Unit::Fahrenheit,
-                value: f_temperature,
-                equivalent: convert(f_temperature, Unit::Fahrenheit, Unit::Celsius).unwrap(),
-            },
-        )
-    }
-
-    fn generate_length_choices(level: Level) -> (Choice, Choice) {
-        // TODO: based on temperatures but doesn't really work - rething to have just one algo for all quantities
-        let km_difference = 1000.0 - 50.0 * level as Float;
-        let mut kms = 1000.0 * random::<Float>() + km_difference;
-        let nms_higher = random::<bool>();
-        let mut nms = convert(
-            kms + if nms_higher { 1.0 } else { -1.0 } * km_difference,
-            Unit::Kilometer,
-            Unit::NauticalMile,
-        )
-        .unwrap();
-        if nms_higher {
-            kms = kms.floor();
-            nms = nms.ceil();
-        } else {
-            kms = kms.ceil();
-            nms = nms.floor();
-        }
-
-        (
-            Choice {
-                unit: Unit::Kilometer,
-                value: kms,
-                equivalent: convert(kms, Unit::Kilometer, Unit::NauticalMile).unwrap(),
-            },
-            Choice {
-                unit: Unit::NauticalMile,
-                value: nms,
-                equivalent: convert(nms, Unit::NauticalMile, Unit::Kilometer).unwrap(),
-            },
-        )
-    }
-
-    pub fn generate_challenge(&self, level: Level) -> Challenge {
-        let (left_choice, right_choice) = match self {
-            Quantity::Temperature => Quantity::generate_temperature_choices(level),
-            Quantity::Length => Quantity::generate_length_choices(level),
-            _ => Quantity::generate_temperature_choices(level), // FIXME
+            (unit_pair.0, unit_pair.1)
         };
+        let delta = bigger.level_delta(level);
+        let mid_point = {
+            let min_allowed = bigger.min_value() + delta;
+            let max_allowed = bigger.max_value() - delta;
+            assert!(min_allowed < max_allowed);
+            min_allowed + (max_allowed - min_allowed) * random::<Float>()
+        };
+        let (bigger_value, smaller_value) = {
+            if random::<bool>() {
+                (
+                    (mid_point + delta).ceil(),
+                    convert(mid_point - delta, bigger, smaller).unwrap().floor(),
+                )
+            } else {
+                (
+                    (mid_point - delta).floor(),
+                    convert(mid_point + delta, bigger, smaller).unwrap().ceil(),
+                )
+            }
+        };
+
+        let bigger_choice = Choice {
+            unit: bigger,
+            value: bigger_value,
+            equivalent: convert(bigger_value, bigger, smaller).unwrap(),
+        };
+        let smaller_choice = Choice {
+            unit: smaller,
+            value: smaller_value,
+            equivalent: convert(smaller_value, smaller, bigger).unwrap(),
+        };
+
         if random::<bool>() {
-            Challenge {
-                quantity: self.clone(),
-                left_choice,
-                right_choice,
+            Self {
+                left_choice: bigger_choice,
+                right_choice: smaller_choice,
             }
         } else {
-            Challenge {
-                quantity: self.clone(),
-                left_choice: right_choice,
-                right_choice: left_choice,
+            Self {
+                left_choice: smaller_choice,
+                right_choice: bigger_choice,
             }
         }
     }
-
-    // TODO: generate challenge based on unit_pairs, not on quantity
 }
 
 #[derive(Debug)]
 pub struct Game {
     pub in_progress: bool,
-    pub level_per_quantity: HashMap<Quantity, Level>,
+    level_per_unit_pair: HashMap<(Unit, Unit), Level>,
     pub challenge: Challenge,
 }
 
 impl Game {
     pub fn new_with_single_quantity(quantity: Quantity) -> Self {
-        let mut level_per_quantity = HashMap::with_capacity(1);
-        level_per_quantity.insert(quantity, 0);
+        let mut level_per_unit_pair = HashMap::new();
+        let unit_pairs = quantity.unit_pairs();
+        for pair in &unit_pairs {
+            level_per_unit_pair.insert(*pair, 0);
+        }
+        let mut rng = rand::thread_rng();
         Self {
             in_progress: true,
-            level_per_quantity,
-            challenge: quantity.generate_challenge(0),
+            level_per_unit_pair,
+            challenge: Challenge::generate(unit_pairs.iter().choose(&mut rng).unwrap().clone(), 0),
         }
     }
 
     pub fn pick(&mut self, selection: ChoiceSelection) {
         if self.challenge.is_correct(selection) {
-            self.level_per_quantity
-                .entry(self.challenge.quantity)
+            self.level_per_unit_pair
+                .entry(self.challenge.unit_pair())
                 .and_modify(|e| *e += 1)
                 .or_insert(1);
             let mut rng = rand::thread_rng();
-            let next_quantity = self.level_per_quantity.keys().choose(&mut rng).unwrap();
-            let level = self.level_per_quantity.get(next_quantity).unwrap_or(&0).clone();
-            self.challenge = next_quantity.generate_challenge(level);
+            let next_unit_pair = self.level_per_unit_pair.keys().choose(&mut rng).unwrap();
+            let level = self.level_per_unit_pair.get(next_unit_pair).unwrap_or(&0).clone();
+            self.challenge = Challenge::generate(*next_unit_pair, level);
         } else {
             self.in_progress = false;
         }
@@ -429,53 +423,53 @@ mod tests {
 
     #[test]
     fn correct_pick_increases_level() {
-        let mut level_per_quantity = HashMap::new();
-        level_per_quantity.insert(Quantity::Temperature, 3);
+        let mut level_per_unit_pair = HashMap::new();
+        let unit_pair = Unit::Celsius.pair_with(Unit::Fahrenheit);
+        level_per_unit_pair.insert(unit_pair, 3);
         let mut game = Game {
             in_progress: true,
-            level_per_quantity,
+            level_per_unit_pair,
             challenge: Challenge {
-                quantity: Quantity::Temperature,
                 left_choice: Choice {
                     unit: Unit::Celsius,
                     value: 30.0,
                     equivalent: 30.0,
                 },
                 right_choice: Choice {
-                    unit: Unit::Celsius,
-                    value: 10.0,
-                    equivalent: 10.0,
+                    unit: Unit::Fahrenheit,
+                    value: 0.0,
+                    equivalent: 0.0,
                 },
             },
         };
         game.pick(ChoiceSelection::Left);
-        assert_eq!(game.level_per_quantity.get(&Quantity::Temperature), Some(&4));
+        assert_eq!(game.level_per_unit_pair.get(&unit_pair), Some(&4));
         assert_eq!(game.in_progress, true);
     }
 
     #[test]
     fn wrong_pick_stops_game() {
-        let mut level_per_quantity = HashMap::new();
-        level_per_quantity.insert(Quantity::Temperature, 3);
+        let mut level_per_unit_pair = HashMap::new();
+        let unit_pair = Unit::Celsius.pair_with(Unit::Fahrenheit);
+        level_per_unit_pair.insert(unit_pair, 3);
         let mut game = Game {
             in_progress: true,
-            level_per_quantity,
+            level_per_unit_pair,
             challenge: Challenge {
-                quantity: Quantity::Temperature,
                 left_choice: Choice {
                     unit: Unit::Celsius,
                     value: 30.0,
                     equivalent: 30.0,
                 },
                 right_choice: Choice {
-                    unit: Unit::Celsius,
-                    value: 10.0,
-                    equivalent: 10.0,
+                    unit: Unit::Fahrenheit,
+                    value: 0.0,
+                    equivalent: 0.0,
                 },
             },
         };
         game.pick(ChoiceSelection::Right);
-        assert_eq!(game.level_per_quantity.get(&Quantity::Temperature), Some(&3));
+        assert_eq!(game.level_per_unit_pair.get(&unit_pair), Some(&3));
         assert_eq!(game.in_progress, false);
     }
 }
