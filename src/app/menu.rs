@@ -27,9 +27,11 @@ impl ViewController for MenuController {
 
         create_unit_button(&mut presenter, &document, &view, "C/F", Quantity::Temperature);
         create_unit_button(&mut presenter, &document, &view, "km/M", Quantity::Length);
-        create_unit_button(&mut presenter, &document, &view, "m^2/???", Quantity::Area);
-        create_unit_button(&mut presenter, &document, &view, "L/oz", Quantity::Volume);
-        create_unit_button(&mut presenter, &document, &view, "kg,lbs", Quantity::Mass);
+        create_unit_button(&mut presenter, &document, &view, "m^2/sq ft", Quantity::Area);
+        create_unit_button(&mut presenter, &document, &view, "L/fl oz", Quantity::Volume);
+        create_unit_button(&mut presenter, &document, &view, "kg/lbs", Quantity::Mass);
+        create_unit_button(&mut presenter, &document, &view, "cal/J", Quantity::Energy);
+        create_unit_button(&mut presenter, &document, &view, "psi/kPa", Quantity::Pressure);
 
         view
     }
