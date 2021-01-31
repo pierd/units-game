@@ -132,17 +132,46 @@ impl Unit {
         }
     }
 
+    fn level0_delta(&self) -> Float {
+        (self.max_value() - self.min_value()) / 2.1 // slightly less than half
+    }
+
     fn level_delta(&self, level: Level) -> Float {
-        // FIXME
-        20.0
+        (self.level0_delta() * (0.9 as Float).powi(level as i32)).max(1.0)
     }
 
     fn min_value(&self) -> Float {
-        0.0
+        match self {
+            Unit::Fahrenheit => convert(Unit::Celsius.min_value(), Unit::Celsius, Unit::Fahrenheit).unwrap(),
+            Unit::Celsius => -40.0,
+            _ => 1.0,
+        }
     }
 
     fn max_value(&self) -> Float {
-        100.0
+        match self {
+            Unit::Celsius => 50.0,
+            Unit::Foot => 200.0,
+            Unit::Gallon => 99.0,
+            Unit::Pound => 500.0,
+            Unit::Kilopascal => 200.0,
+
+            Unit::Fahrenheit => convert(Unit::Celsius.max_value(), Unit::Celsius, Unit::Fahrenheit).unwrap(),
+            Unit::Meter => convert(Unit::Foot.max_value(), Unit::Foot, Unit::Meter).unwrap(),
+            Unit::Mile => convert(Unit::Kilometer.max_value(), Unit::Kilometer, Unit::Mile).unwrap(),
+            Unit::NauticalMile => convert(Unit::Kilometer.max_value(), Unit::Kilometer, Unit::Mile).unwrap(),
+            Unit::SquareMeter => convert(Unit::SquareFoot.max_value(), Unit::SquareFoot, Unit::SquareMeter).unwrap(),
+            Unit::Hectare => convert(Unit::Acre.max_value(), Unit::Acre, Unit::Hectare).unwrap(),
+            Unit::FluidOunce => convert(Unit::Millilitre.max_value(), Unit::Millilitre, Unit::FluidOunce).unwrap(),
+            Unit::Litre => convert(Unit::Gallon.max_value(), Unit::Gallon, Unit::Litre).unwrap(),
+            Unit::Kilogram => convert(Unit::Pound.max_value(), Unit::Pound, Unit::Kilogram).unwrap(),
+            Unit::Calorie => convert(Unit::Joule.max_value(), Unit::Joule, Unit::Calorie).unwrap(),
+            Unit::PoundPerSquareInch => {
+                convert(Unit::Kilopascal.max_value(), Unit::Kilopascal, Unit::PoundPerSquareInch).unwrap()
+            }
+
+            _ => 999.0,
+        }
     }
 }
 
@@ -192,6 +221,14 @@ fn convert(value: Float, from: Unit, to: Unit) -> Option<Float> {
         (Unit::PoundPerSquareInch, Unit::Kilopascal) => Some(value * 6.894757),
         (Unit::Kilopascal, Unit::PoundPerSquareInch) => Some(value / 6.894757),
 
+        _ => None,
+    }
+}
+
+#[cfg(test)] // currently only used in tests
+fn delta_convert(delta: Float, from: Unit, to: Unit) -> Option<Float> {
+    match (convert(0.0, from, to), convert(delta, from, to)) {
+        (Some(base), Some(point)) => Some(point - base),
         _ => None,
     }
 }
@@ -402,8 +439,7 @@ mod tests {
     fn units_order_follows_delta() {
         for a in ALL_UNITS {
             for b in ALL_UNITS {
-                if let (Some(base), Some(point)) = (convert(0.0, *a, *b), convert(1.0, *a, *b)) {
-                    let delta = point - base;
+                if let Some(delta) = delta_convert(1.0, *a, *b) {
                     if delta < 1.0 {
                         assert!(*a < *b, "delta = {:?} so {:?} < {:?}", delta, *a, *b);
                     } else if delta > 1.0 {
