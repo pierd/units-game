@@ -2,7 +2,9 @@ use crate::logic::Quantity;
 
 use super::{log, Presenter, Reaction, State, ViewController};
 
-use web_sys::{window, Document, Element};
+use wasm_bindgen::JsCast;
+use web_sys::{window, Document, Element, HtmlImageElement};
+
 pub struct MenuController {
     view: Option<Element>,
 }
@@ -32,6 +34,7 @@ impl ViewController for MenuController {
         create_unit_button(&mut presenter, &document, &view, "kg/lbs", Quantity::Mass);
         create_unit_button(&mut presenter, &document, &view, "cal/J", Quantity::Energy);
         create_unit_button(&mut presenter, &document, &view, "psi/kPa", Quantity::Pressure);
+        create_unit_button(&mut presenter, &document, &view, "all", Quantity::Pressure);    // FIXME
 
         view
     }
@@ -52,10 +55,17 @@ fn create_unit_button(
     inner_html: &str,
     quantity: Quantity,
 ) {
+    let icon: HtmlImageElement = document.create_element("img").expect("create_element failed").dyn_into().expect("cast failed");
+    icon.set_src("assets/icon-placeholder.png");
+
     let button = document.create_element("div").expect("create_element failed");
     button.set_class_name("menu-button");
     button.set_inner_html(inner_html);
+
+    // create hierarchy
+    button.append_with_node_1(&icon).expect("append_with_node_1 failed");
     parent.append_with_node_1(&button).expect("append_with_node_1 failed");
+
     // attach handlers
     presenter.add_event_reaction(&button, "click", Reaction::Transition(State::Playing(quantity)));
 }

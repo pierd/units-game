@@ -17,6 +17,7 @@ script:
   - wasm-pack build --release --target web --no-typescript
   - mkdir -p out/pkg
   - cp index.html out/
+  - cp -R assets out/
   - mv pkg/units_game* out/pkg/
   - ls -lR out
 
