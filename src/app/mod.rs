@@ -1,4 +1,4 @@
-use crate::logic::Quantity;
+use crate::logic::{GameSummary, Quantity};
 
 use super::log;
 
@@ -103,7 +103,9 @@ pub enum Reaction {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum State {
     Menu,
+    Settings,
     Playing(Quantity),
+    Ended(GameSummary),
 }
 
 trait ViewController {
@@ -179,7 +181,9 @@ impl AppController {
         log!("Transitioning to: {:?}", state);
         match state {
             State::Menu => AppController::show_view_controller(self_, MenuController::default()),
+            State::Settings => {}
             State::Playing(game_type) => AppController::show_view_controller(self_, CardsController::new(game_type)),
+            State::Ended(_) => {}
         }
     }
 

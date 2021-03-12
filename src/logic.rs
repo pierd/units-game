@@ -17,6 +17,20 @@ pub enum Quantity {
     Pressure,
 }
 
+impl fmt::Display for Quantity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Quantity::Temperature => "temperature",
+            Quantity::Length => "length",
+            Quantity::Area => "area",
+            Quantity::Volume => "volume",
+            Quantity::Mass => "mass",
+            Quantity::Energy => "energy",
+            Quantity::Pressure => "pressure",
+        })
+    }
+}
+
 /// Note: Units are ordered by their relative delta. That is a difference of a Fahrenheit degree is smaller than
 /// a difference of a Celsius degree or a foot is smaller than a meter and so on.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -91,35 +105,29 @@ const ALL_UNITS: &[Unit] = &[
 
 impl fmt::Display for Unit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Unit::Fahrenheit => f.write_str("F"),
-            Unit::Celsius => f.write_str("C"),
-
-            Unit::Foot => f.write_str("ft"),
-            Unit::Meter => f.write_str("m"),
-            Unit::Kilometer => f.write_str("km"),
-            Unit::Mile => f.write_str("mi"),
-            Unit::NauticalMile => f.write_str("NM"),
-
-            Unit::SquareFoot => f.write_str("sq ft"),
-            Unit::SquareMeter => f.write_str("m^2"),
-            Unit::Acre => f.write_str("acre"),
-            Unit::Hectare => f.write_str("ha"),
-
-            Unit::Millilitre => f.write_str("mL"),
-            Unit::FluidOunce => f.write_str("fl oz"),
-            Unit::Litre => f.write_str("L"),
-            Unit::Gallon => f.write_str("gal"),
-
-            Unit::Pound => f.write_str("lb"),
-            Unit::Kilogram => f.write_str("kg"),
-
-            Unit::Joule => f.write_str("J"),
-            Unit::Calorie => f.write_str("cal"),
-
-            Unit::Kilopascal => f.write_str("kPa"),
-            Unit::PoundPerSquareInch => f.write_str("psi"),
-        }
+        f.write_str(match self {
+            Unit::Fahrenheit => "F",
+            Unit::Celsius => "C",
+            Unit::Foot => "ft",
+            Unit::Meter => "m",
+            Unit::Kilometer => "km",
+            Unit::Mile => "mi",
+            Unit::NauticalMile => "NM",
+            Unit::SquareFoot => "sq ft",
+            Unit::SquareMeter => "m^2",
+            Unit::Acre => "acre",
+            Unit::Hectare => "ha",
+            Unit::Millilitre => "mL",
+            Unit::FluidOunce => "fl oz",
+            Unit::Litre => "L",
+            Unit::Gallon => "gal",
+            Unit::Pound => "lb",
+            Unit::Kilogram => "kg",
+            Unit::Joule => "J",
+            Unit::Calorie => "cal",
+            Unit::Kilopascal => "kPa",
+            Unit::PoundPerSquareInch => "psi",
+        })
     }
 }
 
@@ -336,6 +344,17 @@ impl Challenge {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GameSummary {
+    // TODO
+}
+
+impl Default for GameSummary {
+    fn default() -> Self {
+        GameSummary {}
+    }
+}
+
 #[derive(Debug)]
 pub struct Game {
     pub in_progress: bool,
@@ -371,6 +390,11 @@ impl Game {
         } else {
             self.in_progress = false;
         }
+    }
+
+    pub fn summary(&self) -> GameSummary {
+        // TODO
+        GameSummary::default()
     }
 }
 
